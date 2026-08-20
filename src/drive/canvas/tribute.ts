@@ -22,7 +22,7 @@ export class TributeFx {
   tick(dt: number, speed: number, kind: SceneKind): HypeLine | null {
     let event: HypeLine | null = null;
     if (kind === "florida") {
-      if (this.drops.length < 48) {
+      if (this.drops.length < 64) {
         this.drops.push({
           x: Math.random() * 2 - 1,
           y: -Math.random() * 0.4,
@@ -40,7 +40,7 @@ export class TributeFx {
         }
       }
       this.spawn += dt * (0.18 + speed * 0.035);
-      if (this.spawn > 1 && this.gators.length < 3 && speed > 2) {
+      if (this.spawn > 1 && this.gators.length < 5 && speed > 1.2) {
         this.spawn = 0;
         this.gators.push({
           lane: Math.random() < 0.5 ? -0.22 : 0.22,
@@ -158,28 +158,47 @@ function drawProduce(
 function drawGator(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(s, s);
-  ctx.fillStyle = "#1f4a28";
+  ctx.scale(s * 1.35, s * 1.35);
+  ctx.fillStyle = "rgba(20, 70, 40, 0.22)";
   ctx.beginPath();
-  ctx.ellipse(0, 0, 30, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 10, 38, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#245c32";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 32, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#1b4626";
+  ctx.beginPath();
+  ctx.ellipse(4, -3, 22, 6, -0.08, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(26, -3, 13, 8, -0.25, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#16351c";
-  ctx.beginPath();
-  ctx.moveTo(-26, 0);
-  ctx.quadraticCurveTo(-50, Math.sin(t * 7) * 7, -62, 2);
-  ctx.quadraticCurveTo(-44, 9, -24, 5);
-  ctx.fill();
-  ctx.fillStyle = "#c6e86a";
-  ctx.beginPath();
-  ctx.arc(30, -6, 2.4, 0, Math.PI * 2);
+  ctx.ellipse(28, -4, 14, 8, -0.28, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "#16351c";
-  for (const lx of [-8, 6, 16]) {
-    ctx.fillRect(lx, 8, 7, 5);
-    ctx.fillRect(lx - 18, 8, 7, 5);
+  const wag = Math.sin(t * 8) * 8;
+  ctx.beginPath();
+  ctx.moveTo(-28, 1);
+  ctx.quadraticCurveTo(-48, wag, -68, wag * 0.4);
+  ctx.quadraticCurveTo(-46, 10, -26, 6);
+  ctx.fill();
+  ctx.fillStyle = "#d4f07a";
+  ctx.beginPath();
+  ctx.arc(33, -7, 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#0c0c0c";
+  ctx.beginPath();
+  ctx.arc(33.6, -7, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#f4f0d8";
+  ctx.beginPath();
+  ctx.moveTo(36, -1);
+  ctx.lineTo(42, 2);
+  ctx.lineTo(36, 3);
+  ctx.fill();
+  ctx.fillStyle = "#16351c";
+  for (const lx of [-10, 4, 16]) {
+    ctx.fillRect(lx, 9, 8, 6);
+    ctx.fillRect(lx - 18, 9, 8, 6);
   }
   ctx.restore();
 }

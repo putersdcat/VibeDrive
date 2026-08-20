@@ -12,7 +12,7 @@ export const SCENES: Scene[] = [
     hasManual: true,
     idleRpm: 780,
     redline: 7200,
-    sky: ["#14161c", "#2a120e"],
+    sky: ["#0b0c12", "#3a1810"],
   },
   {
     id: "signal-bloom",
@@ -25,7 +25,7 @@ export const SCENES: Scene[] = [
     hasManual: true,
     idleRpm: 900,
     redline: 7800,
-    sky: ["#120818", "#2a1038"],
+    sky: ["#0c0614", "#3a1450"],
   },
   {
     id: "white-pass",
@@ -38,7 +38,7 @@ export const SCENES: Scene[] = [
     hasManual: true,
     idleRpm: 850,
     redline: 7400,
-    sky: ["#8aa4b8", "#d7e4ee"],
+    sky: ["#9eb8cc", "#eef4fa"],
   },
   {
     id: "copper-wash",
@@ -51,7 +51,7 @@ export const SCENES: Scene[] = [
     hasManual: true,
     idleRpm: 700,
     redline: 6200,
-    sky: ["#c45a1a", "#f0c07a"],
+    sky: ["#6a2e0e", "#f2c07a"],
   },
   {
     id: "tape-rain",
@@ -64,7 +64,7 @@ export const SCENES: Scene[] = [
     hasManual: false,
     idleRpm: 640,
     redline: 5600,
-    sky: ["#1a2228", "#3a4a55"],
+    sky: ["#12161c", "#2a3844"],
   },
   {
     id: "inverter",
@@ -77,7 +77,7 @@ export const SCENES: Scene[] = [
     hasManual: false,
     idleRpm: 0,
     redline: 18000,
-    sky: ["#101318", "#1c2430"],
+    sky: ["#0a1014", "#c5d4d0"],
   },
   {
     id: "halo-drift",
@@ -90,7 +90,7 @@ export const SCENES: Scene[] = [
     hasManual: false,
     idleRpm: 0,
     redline: 14000,
-    sky: ["#070814", "#1a1040"],
+    sky: ["#05060e", "#24185a"],
   },
   {
     id: "paper-lantern",
@@ -103,7 +103,7 @@ export const SCENES: Scene[] = [
     hasManual: true,
     idleRpm: 820,
     redline: 7600,
-    sky: ["#1a0e18", "#4a1830"],
+    sky: ["#140814", "#6a2040"],
   },
   {
     id: "citrus-gator",
@@ -116,7 +116,7 @@ export const SCENES: Scene[] = [
     hasManual: false,
     idleRpm: 0,
     redline: 18000,
-    sky: ["#47b7ff", "#ffe58a"],
+    sky: ["#1ea0ff", "#ffe9a0"],
   },
   {
     id: "xing-ghost",
@@ -129,7 +129,7 @@ export const SCENES: Scene[] = [
     hasManual: false,
     idleRpm: 0,
     redline: 16000,
-    sky: ["#070b14", "#173044"],
+    sky: ["#050812", "#1c3a52"],
   },
 ];
 

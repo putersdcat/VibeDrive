@@ -193,6 +193,20 @@ export function renderScene(
 
   fillSky(ctx, w, h, scene.sky[0], scene.sky[1]);
   {
+    const sunX = scene.kind === "florida" || scene.kind === "desert" ? w * 0.76 : w * 0.22;
+    const sunY = vpY * 0.55;
+    const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, w * 0.22);
+    sun.addColorStop(0, `rgba(${ar},${ag},${ab},0.55)`);
+    sun.addColorStop(0.35, `rgba(${ar},${ag},${ab},0.16)`);
+    sun.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, w, h);
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, scene.kind === "florida" || scene.kind === "desert" ? 18 : 10, 0, Math.PI * 2);
+    ctx.fillStyle = scene.kind === "snow" ? "#f4f8ff" : `rgba(${Math.min(255, ar + 40)},${Math.min(255, ag + 30)},${Math.min(255, ab + 10)},0.9)`;
+    ctx.fill();
+  }
+  {
     const glow = ctx.createRadialGradient(w * 0.5, vpY, 4, w * 0.5, vpY, w * 0.42);
     glow.addColorStop(0, `rgba(${ar},${ag},${ab},0.32)`);
     glow.addColorStop(1, "rgba(0,0,0,0)");
