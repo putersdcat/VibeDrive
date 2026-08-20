@@ -1,19 +1,6 @@
-import type { MusicTrack, Scene } from "./types";
+import type { Scene } from "./types";
 
 export const SCENES: Scene[] = [
-  {
-    id: "inverter",
-    name: "Inverter",
-    tagline: "Pure inverter whistle that climbs fast.",
-    accent: "#ff6a1a",
-    kind: "clean-ev",
-    voice: "ev",
-    hasMusic: false,
-    hasManual: false,
-    idleRpm: 0,
-    redline: 18000,
-    sky: ["#0a1014", "#c5d4d0"],
-  },
   {
     id: "citrus-gator",
     name: "Citrus Gator",
@@ -21,24 +8,22 @@ export const SCENES: Scene[] = [
     accent: "#f4c430",
     kind: "florida",
     voice: "ev",
-    hasMusic: false,
     hasManual: false,
     idleRpm: 0,
     redline: 18000,
     sky: ["#1ea0ff", "#ffe9a0"],
   },
   {
-    id: "xing-ghost",
-    name: "Xing Ghost",
-    tagline: "Grade crossing, cyan boxes, a sudden brake.",
-    accent: "#3ee0ff",
-    kind: "xing",
+    id: "inverter",
+    name: "Inverter",
+    tagline: "Pure inverter whistle that climbs fast.",
+    accent: "#ff6a1a",
+    kind: "clean-ev",
     voice: "ev",
-    hasMusic: false,
     hasManual: false,
     idleRpm: 0,
-    redline: 16000,
-    sky: ["#050812", "#1c3a52"],
+    redline: 18000,
+    sky: ["#0a1014", "#c5d4d0"],
   },
   {
     id: "halo-drift",
@@ -47,7 +32,6 @@ export const SCENES: Scene[] = [
     accent: "#6ad4ff",
     kind: "space",
     voice: "space",
-    hasMusic: false,
     hasManual: false,
     idleRpm: 0,
     redline: 14000,
@@ -60,7 +44,6 @@ export const SCENES: Scene[] = [
     accent: "#7fb8a8",
     kind: "rain",
     voice: "muffled",
-    hasMusic: true,
     hasManual: false,
     idleRpm: 640,
     redline: 5600,
@@ -73,7 +56,6 @@ export const SCENES: Scene[] = [
     accent: "#ff4a38",
     kind: "night-road",
     voice: "v8",
-    hasMusic: false,
     hasManual: true,
     idleRpm: 780,
     redline: 7200,
@@ -86,7 +68,6 @@ export const SCENES: Scene[] = [
     accent: "#e84dff",
     kind: "neon-city",
     voice: "synth",
-    hasMusic: false,
     hasManual: true,
     idleRpm: 900,
     redline: 7800,
@@ -99,7 +80,6 @@ export const SCENES: Scene[] = [
     accent: "#8fc7ea",
     kind: "snow",
     voice: "i6",
-    hasMusic: false,
     hasManual: true,
     idleRpm: 850,
     redline: 7400,
@@ -112,7 +92,6 @@ export const SCENES: Scene[] = [
     accent: "#e08a2a",
     kind: "desert",
     voice: "v8",
-    hasMusic: false,
     hasManual: true,
     idleRpm: 700,
     redline: 6200,
@@ -125,7 +104,6 @@ export const SCENES: Scene[] = [
     accent: "#ff7eb6",
     kind: "lantern",
     voice: "i6",
-    hasMusic: true,
     hasManual: true,
     idleRpm: 820,
     redline: 7600,
@@ -134,19 +112,8 @@ export const SCENES: Scene[] = [
 ];
 
 
-export const DEFAULT_SCENE_ID = "inverter";
+export const DEFAULT_SCENE_ID = "citrus-gator";
 
 export function sceneById(id: string): Scene {
   return SCENES.find((s) => s.id === id) ?? SCENES[0]!;
 }
-
-export const TRACKS: MusicTrack[] = [
-  { id: "stoop-dusk", title: "Stoop Dusk", seed: 18, bpm: 84 },
-  { id: "kitchen-light", title: "Kitchen Light", seed: 7, bpm: 76 },
-  { id: "overpass-glow", title: "Overpass Glow", seed: 23, bpm: 92 },
-  { id: "sink-at-3", title: "Sink at 3", seed: 4, bpm: 70 },
-  { id: "terrace-breeze", title: "Terrace Breeze", seed: 11, bpm: 88 },
-  { id: "debug-loop", title: "Debug Loop", seed: 31, bpm: 96 },
-  { id: "lantern-waltz", title: "Lantern Waltz", seed: 9, bpm: 72 },
-  { id: "after-rain", title: "After Rain", seed: 15, bpm: 80 },
-];

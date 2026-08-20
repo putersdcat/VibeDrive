@@ -188,13 +188,19 @@ html[data-theme="light"] {
 .vd-body {
   position: relative;
   min-height: 0;
+  height: 100%;
   display: grid;
+  grid-template-rows: 1fr;
 }
 .vd-stage {
   position: relative;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
+  background: #10141c;
 }
+.scene-sky-fall,
+.scene-sky,
 .scene-canvas,
 .scene-fx {
   position: absolute;
@@ -203,13 +209,38 @@ html[data-theme="light"] {
   height: 100%;
   display: block;
 }
+.scene-sky-fall {
+  z-index: 0;
+}
+.scene-sky {
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  height: 45.5%;
+  width: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
+}
+.scene-canvas {
+  z-index: 2;
+  background: transparent;
+}
 .scene-fx {
+  z-index: 3;
   pointer-events: none;
 }
 .vd-vignette {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 4;
   background: radial-gradient(ellipse at 50% 40%, transparent 40%, rgb(0 0 0 / 28%) 100%);
 }
 
@@ -217,6 +248,7 @@ html[data-theme="light"] {
   position: absolute;
   left: 24px;
   bottom: 118px;
+  z-index: 6;
   z-index: 3;
   pointer-events: none;
 }
@@ -369,7 +401,7 @@ html[data-theme="light"] {
   position: absolute;
   right: 24px;
   bottom: 22px;
-  z-index: 4;
+  z-index: 6;
   display: flex;
   gap: 8px;
 }

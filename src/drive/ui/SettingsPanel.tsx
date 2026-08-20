@@ -38,8 +38,6 @@ export function SettingsPanel() {
   const setTheme = useDrive((s) => s.setTheme);
   const engineVolume = useDrive((s) => s.engineVolume);
   const setEngineVolume = useDrive((s) => s.setEngineVolume);
-  const musicVolume = useDrive((s) => s.musicVolume);
-  const setMusicVolume = useDrive((s) => s.setMusicVolume);
   const hudHidden = useDrive((s) => s.hudHidden);
   const setHudHidden = useDrive((s) => s.setHudHidden);
   const wheelRight = useDrive((s) => s.wheelRight);
@@ -72,7 +70,6 @@ export function SettingsPanel() {
         <section className="vd-group">
           <h3>Sound</h3>
           <SliderRow label="Engine" value={engineVolume} onChange={setEngineVolume} format={(v) => `${Math.round(v * 100)}%`} />
-          <SliderRow label="Music" value={musicVolume} onChange={setMusicVolume} format={(v) => `${Math.round(v * 100)}%`} />
         </section>
 
         <section className="vd-group">

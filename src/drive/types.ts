@@ -9,8 +9,7 @@ export type SceneKind =
   | "clean-ev"
   | "space"
   | "lantern"
-  | "florida"
-  | "xing";
+  | "florida";
 
 export type Scene = {
   id: string;
@@ -19,7 +18,6 @@ export type Scene = {
   accent: string;
   kind: SceneKind;
   voice: EngineVoice;
-  hasMusic: boolean;
   hasManual: boolean;
   idleRpm: number;
   redline: number;
@@ -29,9 +27,3 @@ export type Scene = {
 export type SpeedUnit = "kmh" | "mph";
 export type ThemePref = "dark" | "light" | "auto";
 export type GpsStatus = "idle" | "waiting" | "live" | "denied" | "unavailable";
-export type MusicTrack = {
-  id: string;
-  title: string;
-  seed: number;
-  bpm: number;
-};

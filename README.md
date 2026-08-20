@@ -1,6 +1,6 @@
 # VibeDrive
 
-Cinematic GPS driving HUD. The engine, scenery, and cabin radio follow your real speed — Tesla in-car GPS, or pedals / a local demo on a desk.
+Cinematic GPS driving HUD. The engine and scenery follow your real speed — Tesla in-car GPS, or pedals / a local demo on a desk.
 
 **Live demo:** [https://putersdcat.github.io/VibeDrive/](https://putersdcat.github.io/VibeDrive/)
 
@@ -8,11 +8,10 @@ This is an original recreation of the *GPS cabin HUD* idea popularized by [dribe
 
 ## Cabin
 
-- Ten scenes with cinematic sky plates + a dribe-style pseudo-3D road (rumble strips, world-space dashes, wet asphalt)
-- Tesla-garage tributes **Citrus Gator** and **Xing Ghost**. Gator hits play short public clips of Jeremy Judkins (with permission)
+- Nine scenes with cinematic sky plates and a dribe-style pseudo-3D road
+- **Citrus Gator** is the boot scene — sunny I-95, gators on the tarmac, bananas / cukes / wieners raining onto the road. Gator hits play short public clips of Jeremy Judkins (with permission)
 - Synthesized engine voices (V8, I6, EV inverter, muffled rain, space, synth)
 - Direct drive by default (Tesla single-speed). ICE tributes still have a gearbox
-- Procedural lo-fi cabin radio
 - Speed from GPS, pin, cabin demo, or hold **Throttle** / Space
 - km/h or mph, dark / light / auto theme
 - WebGL2 road + Rust WASM particle core (Canvas 2D fallback)
@@ -54,7 +53,7 @@ cp target/wasm32-unknown-unknown/release/vibedrive_core.wasm ../public/
 
 ## Privacy
 
-GPS, VIN, and tokens stay in the browser. Cabin hype MP3s are original synthesized lines. Engine and music are synthesized with the Web Audio API.
+GPS, VIN, and tokens stay in the browser. Cabin hype MP3s are original synthesized lines plus short Jeremy Judkins reaction clips used with permission. Engine audio is synthesized with the Web Audio API.
 
 ## Develop
 
@@ -63,4 +62,4 @@ npm install
 npm run dev
 ```
 
-GitHub Pages is published from `main` by `.github/workflows/pages.yml` (`npm ci && npm run build` → `gh-pages` branch).
+GitHub Pages publishes from **`main`**: `.github/workflows/pages.yml` runs `npm ci && npm run build` on every push to `main` (and on manual **workflow_dispatch**) and deploys `dist/` to the `gh-pages` branch.

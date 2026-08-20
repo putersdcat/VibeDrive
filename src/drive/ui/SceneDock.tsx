@@ -78,19 +78,6 @@ export function SceneDock() {
               <span className="vd-scene-body">
                 <span className="vd-scene-top">
                   <span className="vd-scene-name">{scene.name}</span>
-                  {scene.hasMusic ? (
-                    <svg viewBox="0 0 16 16" width="14" height="14" aria-label="Has music">
-                      <path
-                        d="M6.4 12.2V3.9l6.2-1.5v8.3"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                      <circle cx="4.4" cy="12.3" r="2" fill="currentColor" />
-                      <circle cx="10.6" cy="10.7" r="2" fill="currentColor" />
-                    </svg>
-                  ) : null}
                   {scene.hasManual ? (
                     <svg viewBox="0 0 16 16" width="14" height="14" aria-label="Manual gearbox">
                       <path

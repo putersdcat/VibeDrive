@@ -1,13 +1,12 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { SCENES, sceneById, TRACKS } from "../scenes";
+import { useEffect, type ReactNode } from "react";
+import { SCENES, sceneById } from "../scenes";
 import { driveEngine } from "../engine";
-import { lofiPlayer } from "../music";
 import { applyCarBrowserDefaults, startGpsWatch } from "../gps";
 import { cabinHype } from "../callouts";
+import { loadTributeSprites } from "../canvas/tribute";
 import { useDrive } from "../store";
 import { HeaderBar } from "./HeaderBar";
 import { Hud } from "./Hud";
-import { MusicPlayer } from "./MusicPlayer";
 import { SceneCanvas } from "./SceneCanvas";
 import { SceneDock } from "./SceneDock";
 import { SettingsPanel } from "./SettingsPanel";
@@ -99,14 +98,9 @@ export function DriveApp({ account }: { account?: ReactNode }) {
   const wheelRight = useDrive((s) => s.wheelRight);
   const muted = useDrive((s) => s.muted);
   const engineVolume = useDrive((s) => s.engineVolume);
-  const musicVolume = useDrive((s) => s.musicVolume);
-  const musicOn = useDrive((s) => s.musicOn);
-  const trackIndex = useDrive((s) => s.trackIndex);
   const setBooted = useDrive((s) => s.setBooted);
   const startSession = useDrive((s) => s.startSession);
   const scene = sceneById(sceneId);
-  const audioReady = useRef(false);
-
   useTheme();
   useDriveLoop();
   useGps();
@@ -129,28 +123,7 @@ export function DriveApp({ account }: { account?: ReactNode }) {
   useEffect(() => {
     driveEngine.setMuted(muted);
     driveEngine.setVolume(engineVolume);
-    lofiPlayer.setMuted(muted);
-    lofiPlayer.setVolume(musicVolume);
-  }, [muted, engineVolume, musicVolume]);
-
-  useEffect(() => {
-    if (!audioReady.current) return;
-    if (musicOn) {
-      const track = TRACKS[trackIndex] ?? TRACKS[0]!;
-      lofiPlayer.play(track);
-    } else {
-      lofiPlayer.stop();
-    }
-    return () => lofiPlayer.stop();
-  }, [musicOn, trackIndex]);
-
-  useEffect(() => {
-    if (!audioReady.current) return;
-    if (scene.hasMusic) {
-      useDrive.getState().setMusicOn(true);
-      useDrive.getState().setMusicOpen(true);
-    }
-  }, [scene.hasMusic, sceneId]);
+  }, [muted, engineVolume]);
 
   useEffect(() => {
     const onVis = () => {
@@ -161,18 +134,13 @@ export function DriveApp({ account }: { account?: ReactNode }) {
   }, []);
 
   const ignite = () => {
-    const ctx = driveEngine.unlock();
+    driveEngine.unlock();
     driveEngine.start();
-    lofiPlayer.attach(ctx);
-    audioReady.current = true;
     driveEngine.setVolume(useDrive.getState().engineVolume);
-    lofiPlayer.setVolume(useDrive.getState().musicVolume);
-    if (sceneById(useDrive.getState().sceneId).hasMusic) {
-      useDrive.getState().setMusicOn(true);
-      useDrive.getState().setMusicOpen(true);
-    }
-    cabinHype.attach(import.meta.env.BASE_URL || "/");
+    const base = import.meta.env.BASE_URL || "/";
+    cabinHype.attach(base);
     cabinHype.prime();
+    loadTributeSprites(base);
     startSession();
   };
 
@@ -208,7 +176,6 @@ export function DriveApp({ account }: { account?: ReactNode }) {
               <Throttle />
             </section>
             <SceneDock />
-            <MusicPlayer />
           </main>
           <SettingsPanel />
         </>

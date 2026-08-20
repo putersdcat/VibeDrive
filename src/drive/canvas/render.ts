@@ -204,7 +204,7 @@ export function renderScene(
   st: RenderState,
 ) {
   const vpY = h * 0.42;
-  const dist = st.t * (0.08 + st.speedMps * 0.045);
+  const dist = st.speedMps * st.t * 0.05;
   const dashOff = dist * 0.35;
   const [ar, ag, ab] = hexToRgb(scene.accent);
   const accent = `rgb(${ar},${ag},${ab})`;
@@ -272,15 +272,6 @@ export function renderScene(
     ctx.fillStyle = "rgba(70, 160, 70, 0.35)";
     ctx.fillRect(0, vpY, w, 18);
   }
-  }
-  if (scene.kind === "xing") {
-    ctx.fillStyle = Math.floor(st.t * 4) % 2 === 0 ? "#ff3030" : "#f4f4f4";
-    ctx.beginPath();
-    ctx.arc(w * 0.22, vpY - 8, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(62,224,255,0.45)";
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(w * 0.42, vpY + 8, 36, 22);
   }
 
   const roadColor =

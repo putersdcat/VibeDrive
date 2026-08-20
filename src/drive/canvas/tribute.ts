@@ -1,206 +1,290 @@
 import type { HypeLine } from "../callouts";
+import { ROAD_H, WORLD_SPEED, project } from "../camera";
 import type { SceneKind } from "../types";
 
-type Gator = { lane: number; z: number; hit: boolean; wobble: number };
-type Drop = { x: number; y: number; s: number; rot: number; kind: 0 | 1 | 2 };
+const PRODUCE: Record<0 | 1 | 2, [string, string, string]> = {
+  0: ["banana-0", "banana-1", "banana-2"],
+  1: ["cucumber-0", "cucumber-1", "cucumber-2"],
+  2: ["hotdog-0", "hotdog-1", "hotdog-2"],
+};
+const PALM_NAMES = ["palm-0", "palm-1", "palm-2"] as const;
+const SPRITE_NAMES = [...PRODUCE[0], ...PRODUCE[1], ...PRODUCE[2], "gator", ...PALM_NAMES];
+const MAX_DROPS = 46;
+const GATOR_LEN = 1.72;
+const PALM_H = 2.35;
+const HIT_Z = 1.48;
+const WORLD_LEN = 36;
+
+type Produce = {
+  xw: number;
+  z: number;
+  yw: number;
+  vy: number;
+  rot: number;
+  spin: number;
+  tumble: number;
+  tumbleSpin: number;
+  s: number;
+  kind: 0 | 1 | 2;
+  variant: 0 | 1 | 2;
+  settled: boolean;
+};
+
+type Gator = {
+  xw: number;
+  z: number;
+  hit: boolean;
+  squash: number;
+  facing: 1 | -1;
+};
+
+type Palm = {
+  xw: number;
+  z: number;
+  variant: 0 | 1 | 2;
+  lean: number;
+};
+
+const sprites: Record<string, HTMLImageElement> = {};
+
+export function loadTributeSprites(base: string) {
+  const root = base.replace(/\/?$/, "/");
+  for (const name of SPRITE_NAMES) {
+    if (sprites[name]?.src) continue;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = `${root}sprites/${name}.png`;
+    sprites[name] = img;
+  }
+}
+
+function spr(name: string): HTMLImageElement | null {
+  const img = sprites[name];
+  return img && img.complete && img.naturalWidth > 0 ? img : null;
+}
+
+function advance(z: number, speed: number, dt: number) {
+  return z - Math.max(0, speed) * WORLD_SPEED * dt;
+}
 
 export class TributeFx {
   private gators: Gator[] = [];
-  private drops: Drop[] = [];
+  private drops: Produce[] = [];
+  private palms: Palm[] = [];
   private spawn = 0;
+  private rain = 2.5;
   private idle = 4;
-  private xingT = 0;
+  private bump = false;
+
+  consumeBump() {
+    const hit = this.bump;
+    this.bump = false;
+    return hit;
+  }
 
   reset() {
-    this.gators = [{ lane: 0.18, z: 0.42, hit: false, wobble: 1.2 }];
+    this.gators = [
+      { xw: -0.5, z: 14.5, hit: false, squash: 0, facing: 1 },
+      { xw: 0.46, z: 8.2, hit: false, squash: 0, facing: -1 },
+      { xw: -0.06, z: 3.6, hit: false, squash: 0, facing: 1 },
+    ];
     this.drops = [];
+    this.palms = [];
+    for (let i = 0; i < 12; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      this.palms.push({
+        xw: side * (ROAD_H + 0.72 + (i % 5) * 0.38),
+        z: 3.2 + ((i * 2.7) % WORLD_LEN),
+        variant: (i % 3) as 0 | 1 | 2,
+        lean: side * (0.04 + (i % 4) * 0.03),
+      });
+    }
     this.spawn = 0;
+    this.rain = 2.5;
     this.idle = 4;
-    this.xingT = 0;
+    this.bump = false;
+  }
+
+  private spawnGator() {
+    const occupied = this.gators.filter((g) => !g.hit).map((g) => g.xw);
+    const lanes = [-0.58, -0.22, 0.2, 0.55];
+    const free = lanes.filter((lane) => occupied.every((x) => Math.abs(x - lane) > 0.32));
+    const xw = free[Math.floor(Math.random() * free.length)] ?? (Math.random() < 0.5 ? -0.4 : 0.4);
+    this.gators.push({
+      xw,
+      z: 22 + Math.random() * 12,
+      hit: false,
+      squash: 0,
+      facing: xw < 0 ? 1 : -1,
+    });
+  }
+
+  private spawnDrop() {
+    const onRoad = Math.random() < 0.78;
+    const xw = onRoad ? (Math.random() - 0.5) * ROAD_H * 1.55 : (Math.random() < 0.5 ? -1 : 1) * (ROAD_H + 0.2 + Math.random() * 0.7);
+    this.drops.push({
+      xw,
+      z: 8 + Math.random() * 18,
+      yw: 0.42 + Math.random() * 0.85,
+      vy: 0.18 + Math.random() * 0.35,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * (6 + Math.random() * 9),
+      tumble: Math.random() * Math.PI * 2,
+      tumbleSpin: (Math.random() - 0.5) * 7,
+      s: 0.7 + Math.random() * 0.8,
+      kind: Math.floor(Math.random() * 3) as 0 | 1 | 2,
+      variant: Math.floor(Math.random() * 3) as 0 | 1 | 2,
+      settled: false,
+    });
   }
 
   tick(dt: number, speed: number, kind: SceneKind): HypeLine | null {
     let event: HypeLine | null = null;
-    if (kind === "florida") {
-      if (this.drops.length < 64) {
-        this.drops.push({
-          x: Math.random() * 2 - 1,
-          y: -Math.random() * 0.4,
-          s: 0.6 + Math.random() * 1.1,
-          rot: Math.random() * Math.PI,
-          kind: (Math.floor(Math.random() * 3) as 0 | 1 | 2),
-        });
-      }
-      for (const d of this.drops) {
-        d.y += dt * (0.22 + speed * 0.012) * d.s;
-        d.rot += dt * 1.4;
-        if (d.y > 1.15) {
-          d.y = -0.08;
-          d.x = Math.random() * 2 - 1;
-        }
-      }
-      this.spawn += dt * (0.18 + speed * 0.035);
-      if (this.spawn > 1 && this.gators.length < 5 && speed > 1.2) {
-        this.spawn = 0;
-        this.gators.push({
-          lane: Math.random() < 0.5 ? -0.22 : 0.22,
-          z: 0.04,
-          hit: false,
-          wobble: Math.random() * 6,
-        });
-      }
-      for (const g of this.gators) {
-        g.z += dt * (0.1 + speed * 0.02);
-        if (!g.hit && g.z > 0.86) {
-          g.hit = true;
-          const hits: HypeLine[] = ["jesus", "oh-my", "holy", "gator"];
-          event = hits[Math.floor(Math.random() * hits.length)]!;
-        }
-      }
-      this.gators = this.gators.filter((g) => g.z < 1.2);
-      this.idle += dt;
-      if (!event && this.idle > 12 && speed > 3) {
-        this.idle = 0;
-        const pool: HypeLine[] = ["oh-my", "holy", "bananas", "hotdogs", "cukes", "jesus", "oh-no"];
-        event = pool[Math.floor(Math.random() * pool.length)]!;
-      }
-    } else if (kind === "xing") {
-      this.xingT += dt;
-      if (this.xingT > 13 && speed > 4) {
-        this.xingT = 0;
-        event = Math.random() < 0.5 ? "phantom" : "oh-no";
-      }
-    } else {
+    if (kind !== "florida") {
       this.idle = 4;
+      return event;
+    }
+
+    this.rain += dt * (speed > 0.6 ? 0.55 : 0.12);
+    if (this.rain > 1 && this.drops.length < MAX_DROPS) {
+      this.rain = Math.random() * -1.4;
+      const n = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) this.spawnDrop();
+    }
+
+    for (const d of this.drops) {
+      d.z = advance(d.z, speed, dt);
+      d.rot += d.spin * dt;
+      d.tumble += d.tumbleSpin * dt;
+      if (d.settled) {
+        d.spin *= Math.exp(-dt * 1.8);
+        d.tumbleSpin *= Math.exp(-dt * 2.4);
+        continue;
+      }
+      d.vy += 0.85 * dt;
+      d.yw -= d.vy * dt;
+      d.xw += (Math.random() - 0.5) * 0.15 * dt;
+      if (d.yw <= 0) {
+        d.yw = 0;
+        d.settled = true;
+        d.vy = 0;
+        d.spin *= 0.2;
+        d.tumbleSpin *= 0.12;
+      }
+    }
+    this.drops = this.drops.filter((d) => d.z > 1.15 && d.z < WORLD_LEN + 8);
+
+    const live = this.gators.filter((g) => !g.hit && g.z > 5).length;
+    this.spawn += dt * (0.1 + speed * 0.022);
+    if (this.spawn > 1 && live < 4) {
+      this.spawn = 0;
+      this.spawnGator();
+    }
+    for (const g of this.gators) {
+      g.z = advance(g.z, speed, dt);
+      if (g.hit) g.squash = Math.min(1, g.squash + dt * 3.6);
+      if (!g.hit && g.z < HIT_Z) {
+        g.hit = true;
+        this.bump = true;
+        const hits: HypeLine[] = ["jesus", "oh-my", "holy", "gator", "oh-no"];
+        event = hits[Math.floor(Math.random() * hits.length)]!;
+      }
+    }
+    this.gators = this.gators.filter((g) => g.z > 0.72 && g.squash < 1);
+
+    for (const p of this.palms) {
+      p.z = advance(p.z, speed, dt);
+      if (p.z < 1.55) {
+        p.z += WORLD_LEN + Math.random() * 4;
+        p.variant = Math.floor(Math.random() * 3) as 0 | 1 | 2;
+      }
+    }
+
+    this.idle += dt;
+    if (!event && this.idle > 16 && speed > 3) {
+      this.idle = 0;
+      const pool: HypeLine[] = ["oh-my", "holy", "bananas", "hotdogs", "cukes", "jesus"];
+      event = pool[Math.floor(Math.random() * pool.length)]!;
     }
     return event;
   }
 
-  draw(ctx: CanvasRenderingContext2D, w: number, h: number, kind: SceneKind, t: number) {
+  draw(ctx: CanvasRenderingContext2D, w: number, h: number, kind: SceneKind, t: number, shake = 0, bump = 0) {
     ctx.clearRect(0, 0, w, h);
-    if (kind === "florida") {
-      for (const d of this.drops) {
-        const x = w * (0.5 + d.x * 0.46);
-        const y = d.y * h;
-        drawProduce(ctx, x, y, 8 + 16 * d.s * Math.min(1, d.y + 0.2), d.rot, d.kind);
-      }
-      const vpY = h * 0.42;
-      for (const g of this.gators) {
-        const p = g.z * g.z;
-        const x = w * 0.5 + g.lane * w * p * 1.6;
-        const y = vpY + (h - vpY) * p;
-        drawGator(ctx, x, y, 0.25 + 2.4 * p, t + g.wobble);
-      }
+    if (kind !== "florida") return;
+    ctx.save();
+    ctx.translate(Math.sin(t * 63) * shake * 10, bump * 16 + Math.sin(t * 81) * shake * 6);
+
+    type Sprite = { z: number; draw: () => void };
+    const queue: Sprite[] = [];
+
+    for (const p of this.palms) {
+      queue.push({ z: p.z, draw: () => drawPalm(ctx, w, h, p) });
     }
-    if (kind === "xing") {
-      const flash = Math.floor(t * 4) % 2 === 0;
-      ctx.fillStyle = flash ? "rgba(255,40,40,0.55)" : "rgba(255,255,255,0.45)";
-      ctx.beginPath();
-      ctx.arc(w * 0.22, h * 0.38, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = flash ? "rgba(255,255,255,0.45)" : "rgba(255,40,40,0.55)";
-      ctx.beginPath();
-      ctx.arc(w * 0.78, h * 0.38, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(80, 230, 255, 0.35)";
-      ctx.lineWidth = 1.4;
-      for (let i = 0; i < 6; i++) {
-        const x = w * (0.28 + i * 0.08);
-        ctx.strokeRect(x, h * 0.46, 28 + i * 4, 18 + i * 6);
-      }
+    for (const g of this.gators) {
+      queue.push({ z: g.z, draw: () => drawGator(ctx, w, h, g) });
     }
+    for (const d of this.drops) {
+      queue.push({ z: d.z - d.yw * 0.15, draw: () => drawProduce(ctx, w, h, d) });
+    }
+    queue.sort((a, b) => b.z - a.z);
+    for (const s of queue) s.draw();
+
+    ctx.restore();
   }
 }
 
-function drawProduce(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  s: number,
-  rot: number,
-  kind: 0 | 1 | 2,
-) {
+function drawPalm(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palm) {
+  const img = spr(PALM_NAMES[p.variant]!) ?? spr("palm-0");
+  if (!img) return;
+  const pr = project(p.xw, p.z, w, h);
+  const dh = (PALM_H / pr.z) * h;
+  const dw = dh * (img.naturalWidth / Math.max(1, img.naturalHeight));
+  const fog = Math.max(0, Math.min(1, (pr.z - 12) / 16));
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rot);
-  if (kind === 0) {
-    ctx.fillStyle = "#f4d03f";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, s, s * 0.38, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#3d6b1e";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.7, -s * 0.1);
-    ctx.lineTo(-s * 0.95, -s * 0.45);
-    ctx.stroke();
-  } else if (kind === 1) {
-    ctx.fillStyle = "#3fa34d";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, s * 0.32, s * 0.95, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#2a6b32";
-    ctx.fillRect(-s * 0.12, -s * 1.05, s * 0.24, s * 0.2);
-  } else {
-    ctx.fillStyle = "#c45c26";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, s * 0.95, s * 0.32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#f0d7a4";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, s * 0.95, s * 0.16, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#6b2a12";
-    ctx.fillRect(-s * 0.7, -s * 0.08, s * 1.4, s * 0.12);
-  }
+  ctx.translate(pr.x, pr.y);
+  ctx.rotate(p.lean);
+  ctx.globalAlpha = 1 - fog * 0.85;
+  ctx.drawImage(img, -dw / 2, -dh, dw, dh);
   ctx.restore();
 }
 
-function drawGator(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+function drawGator(ctx: CanvasRenderingContext2D, w: number, h: number, g: Gator) {
+  const img = spr("gator");
+  if (!img) return;
+  const p = project(g.xw, g.z, w, h);
+  const dw = GATOR_LEN * p.scale * w;
+  const ratio = img.naturalHeight / Math.max(1, img.naturalWidth);
+  const dh = dw * ratio * 0.82;
   ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(s * 1.35, s * 1.35);
-  ctx.fillStyle = "rgba(20, 70, 40, 0.22)";
+  ctx.translate(p.x, p.y);
+  ctx.scale(g.facing, 1 - g.squash * 0.7);
+  ctx.globalAlpha = 1 - g.squash * 0.4;
+  ctx.fillStyle = "rgba(18, 14, 8, 0.32)";
   ctx.beginPath();
-  ctx.ellipse(0, 10, 38, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(dw * 0.04, Math.max(1.5, dh * 0.12), dw * 0.38, Math.max(1.8, dw * 0.028), 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#245c32";
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 32, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#1b4626";
-  ctx.beginPath();
-  ctx.ellipse(4, -3, 22, 6, -0.08, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(28, -4, 14, 8, -0.28, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#16351c";
-  const wag = Math.sin(t * 8) * 8;
-  ctx.beginPath();
-  ctx.moveTo(-28, 1);
-  ctx.quadraticCurveTo(-48, wag, -68, wag * 0.4);
-  ctx.quadraticCurveTo(-46, 10, -26, 6);
-  ctx.fill();
-  ctx.fillStyle = "#d4f07a";
-  ctx.beginPath();
-  ctx.arc(33, -7, 2.6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#0c0c0c";
-  ctx.beginPath();
-  ctx.arc(33.6, -7, 1.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#f4f0d8";
-  ctx.beginPath();
-  ctx.moveTo(36, -1);
-  ctx.lineTo(42, 2);
-  ctx.lineTo(36, 3);
-  ctx.fill();
-  ctx.fillStyle = "#16351c";
-  for (const lx of [-10, 4, 16]) {
-    ctx.fillRect(lx, 9, 8, 6);
-    ctx.fillRect(lx - 18, 9, 8, 6);
-  }
+  ctx.drawImage(img, -dw / 2, -dh + dh * 0.08, dw, dh);
+  ctx.restore();
+}
+
+function drawProduce(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produce) {
+  const name = PRODUCE[d.kind][d.variant] ?? PRODUCE[d.kind][0]!;
+  const img = spr(name) ?? spr(PRODUCE[d.kind][0]!);
+  if (!img) return;
+  const p = project(d.xw, d.z, w, h, d.yw);
+  const world = (d.kind === 0 ? 0.46 : d.kind === 1 ? 0.72 : 0.58) * d.s;
+  const dw = world * p.scale * w;
+  const dh = dw * (img.naturalHeight / Math.max(1, img.naturalWidth));
+  const near = Math.max(0, Math.min(1, 1.15 - d.z / 22));
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(d.rot);
+  ctx.scale(Math.cos(d.tumble), 1);
+  ctx.globalAlpha = 0.55 + near * 0.45;
+  if (!d.settled && d.yw > 0.2) ctx.filter = `blur(${Math.min(2.8, d.yw * 2.2).toFixed(1)}px)`;
+  ctx.drawImage(img, -dw / 2, d.settled ? -dh * 0.85 : -dh / 2, dw, dh);
+  ctx.filter = "none";
   ctx.restore();
 }
 

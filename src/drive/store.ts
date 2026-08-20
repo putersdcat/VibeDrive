@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { detectTeslaBrowser } from "./car";
-import { DEFAULT_SCENE_ID, TRACKS, sceneById } from "./scenes";
+import { DEFAULT_SCENE_ID, sceneById } from "./scenes";
 import { autoGearForSpeed, rpmDirectDrive, rpmFromSpeed } from "./gearbox";
 import type { GpsStatus, SpeedUnit, ThemePref } from "./types";
 
-const LS_KEY = "vibedrive:v4";
+const LS_KEY = "vibedrive:v6";
 
 export type CabinSource = "sim" | "gps" | "pin" | "demo";
 
@@ -16,12 +16,10 @@ type DriveState = {
   unit: SpeedUnit;
   theme: ThemePref;
   engineVolume: number;
-  musicVolume: number;
   muted: boolean;
   hudHidden: boolean;
   dockOpen: boolean;
   settingsOpen: boolean;
-  musicOpen: boolean;
   wheelRight: boolean;
   isManual: boolean;
   gear: number;
@@ -42,22 +40,20 @@ type DriveState = {
   pinSpeed: boolean;
   pinnedKmh: number;
   simulate: boolean;
-  trackIndex: number;
-  musicOn: boolean;
   hypeOn: boolean;
   fps: number;
+  shake: number;
+  bump: number;
   setBooted: (v: boolean) => void;
   startSession: () => void;
   setScene: (id: string) => void;
   setUnit: (u: SpeedUnit) => void;
   setTheme: (t: ThemePref) => void;
   setEngineVolume: (v: number) => void;
-  setMusicVolume: (v: number) => void;
   setMuted: (v: boolean) => void;
   setHudHidden: (v: boolean) => void;
   setDockOpen: (v: boolean) => void;
   setSettingsOpen: (v: boolean) => void;
-  setMusicOpen: (v: boolean) => void;
   setWheelRight: (v: boolean) => void;
   setManual: (v: boolean) => void;
   shift: (dir: 1 | -1) => void;
@@ -70,9 +66,8 @@ type DriveState = {
   setCarBrowser: (v: boolean) => void;
   setDemoOn: (v: boolean) => void;
   setFps: (v: number) => void;
-  nextTrack: (delta: number) => void;
-  setMusicOn: (v: boolean) => void;
   setHypeOn: (v: boolean) => void;
+  hitBump: () => void;
   tick: (dt: number) => void;
 };
 
@@ -85,12 +80,10 @@ export const useDrive = create<DriveState>()(
       unit: "kmh",
       theme: "dark",
       engineVolume: 0.68,
-      musicVolume: 0.42,
       muted: false,
       hudHidden: false,
       dockOpen: true,
       settingsOpen: false,
-      musicOpen: false,
       wheelRight: false,
       isManual: false,
       gear: 1,
@@ -111,10 +104,10 @@ export const useDrive = create<DriveState>()(
       pinSpeed: false,
       pinnedKmh: 90,
       simulate: false,
-      trackIndex: 0,
-      musicOn: false,
       hypeOn: true,
       fps: 0,
+      shake: 0,
+      bump: 0,
       setBooted: (v) => set({ booted: v }),
       startSession: () => set({ started: true }),
       setScene: (id) => {
@@ -128,12 +121,10 @@ export const useDrive = create<DriveState>()(
       setUnit: (unit) => set({ unit }),
       setTheme: (theme) => set({ theme }),
       setEngineVolume: (engineVolume) => set({ engineVolume }),
-      setMusicVolume: (musicVolume) => set({ musicVolume }),
       setMuted: (muted) => set({ muted }),
       setHudHidden: (hudHidden) => set({ hudHidden }),
       setDockOpen: (dockOpen) => set({ dockOpen }),
       setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
-      setMusicOpen: (musicOpen) => set({ musicOpen }),
       setWheelRight: (wheelRight) => set({ wheelRight }),
       setManual: (isManual) => {
         const scene = sceneById(get().sceneId);
@@ -156,12 +147,8 @@ export const useDrive = create<DriveState>()(
       setCarBrowser: (carBrowser) => set({ carBrowser }),
       setDemoOn: (demoOn) => set({ demoOn, demoT: demoOn ? get().demoT : 0 }),
       setFps: (fps) => set({ fps }),
-      nextTrack: (delta) =>
-        set((s) => ({
-          trackIndex: (s.trackIndex + delta + TRACKS.length) % TRACKS.length,
-        })),
-      setMusicOn: (musicOn) => set({ musicOn }),
       setHypeOn: (hypeOn) => set({ hypeOn }),
+      hitBump: () => set({ shake: 1, bump: 1 }),
       tick: (dt) => {
         const s = get();
         const scene = sceneById(s.sceneId);
@@ -240,6 +227,8 @@ export const useDrive = create<DriveState>()(
           source,
           demoT,
           shiftFlash: Math.max(0, s.shiftFlash - dt),
+          shake: Math.max(0, s.shake - dt * 3.6),
+          bump: Math.max(0, s.bump - dt * 5.2),
         });
       },
     }),
@@ -251,11 +240,9 @@ export const useDrive = create<DriveState>()(
         unit: s.unit,
         theme: s.theme,
         engineVolume: s.engineVolume,
-        musicVolume: s.musicVolume,
         hudHidden: s.hudHidden,
         wheelRight: s.wheelRight,
         pinnedKmh: s.pinnedKmh,
-        trackIndex: s.trackIndex,
         dockOpen: s.dockOpen,
         hypeOn: s.hypeOn,
       }),

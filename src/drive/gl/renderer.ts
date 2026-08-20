@@ -9,6 +9,7 @@ void main(){ gl_Position = vec4(POS[gl_VertexID], 0.0, 1.0); }
 
 const FRAG_FS = `#version 300 es
 precision highp float;
+precision highp int;
 uniform vec2 uRes;
 uniform float uTime;
 uniform float uSpeed;
@@ -20,6 +21,8 @@ uniform int uKind;
 uniform sampler2D uSky;
 uniform float uHasSky;
 uniform float uScroll;
+uniform float uShake;
+uniform float uBump;
 out vec4 frag;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
@@ -44,41 +47,25 @@ vec3 terrain(int k, float band){
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   float aspect = uRes.x / max(uRes.y, 1.0);
-  uv.x += 0.0018 * uLoad * sin(uTime * 31.0);
-  float horizon = 0.56;
-  float skyT = clamp((uv.y - horizon) / max(1.0 - horizon, 0.001), 0.0, 1.0);
+  uv.x += 0.0018 * uLoad * sin(uTime * 31.0) + uShake * 0.016 * sin(uTime * 63.0);
+  uv.y += uBump * 0.026 + uShake * 0.009 * sin(uTime * 81.0);
+  float horizon = 0.56 + uBump * 0.04;
 
-  vec3 col = mix(uSky1, uSky0, pow(skyT, 0.72));
+  if (uv.y >= horizon) {
+    frag = vec4(0.0);
+    return;
+  }
+
   vec3 horCol = uSky1;
-  if (uHasSky > 0.5) {
-    vec2 suv = vec2(clamp(uv.x, 0.001, 0.999), mix(0.64, 1.0, pow(skyT, 0.68)));
-    col = texture(uSky, suv).rgb;
-    horCol = texture(uSky, vec2(0.5, 0.64)).rgb;
-  }
-
-  vec2 sun = vec2(0.18, 0.70);
   vec3 sunC = mix(uAccent, vec3(1.0, 0.86, 0.55), 0.4);
-  if (uKind == 8) { sun = vec2(0.78, 0.72); sunC = vec3(1.00, 0.90, 0.45); }
-  else if (uKind == 3) { sun = vec2(0.82, 0.64); sunC = vec3(1.00, 0.72, 0.22); }
-  else if (uKind == 2) { sun = vec2(0.22, 0.72); sunC = vec3(0.95, 0.97, 1.00); }
-  else if (uKind == 5) { sun = vec2(0.50, 0.73); sunC = vec3(1.00, 0.94, 0.78); }
-  else if (uKind == 7) { sun = vec2(0.80, 0.66); sunC = vec3(1.00, 0.50, 0.68); }
-  else if (uKind == 6) { sun = vec2(0.68, 0.74); sunC = uAccent; }
-  else if (uKind == 0 || uKind == 4 || uKind == 9) { sun = vec2(0.16, 0.67); sunC = vec3(1.00, 0.62, 0.28); }
-  float sd = length((uv - sun) * vec2(aspect, 1.0));
-  col += sunC * 0.55 * exp(-sd * 22.0);
-  col += sunC * 0.22 * exp(-sd * 6.0);
-  if (uKind == 8 || uKind == 3 || uKind == 5) {
-    col += sunC * 0.12 * exp(-abs(uv.y - sun.y) * 40.0) * exp(-abs(uv.x - sun.x) * 1.6);
-  }
-  col += mix(uAccent, sunC, 0.5) * 0.28 * exp(-abs(uv.y - horizon) * 22.0);
-
-  if (uKind == 0 || uKind == 1 || uKind == 6 || uKind == 9) {
-    float sp = hash(floor(uv * vec2(140.0, 70.0)));
-    if (sp > 0.989) col += vec3(0.85, 0.92, 1.0) * (0.4 + 0.6 * n2(uv * 40.0 + uTime * 0.04));
-  }
-
-  if (uHasSky < 0.5) horCol = col;
+  if (uKind == 8) sunC = vec3(1.00, 0.90, 0.45);
+  else if (uKind == 3) sunC = vec3(1.00, 0.72, 0.22);
+  else if (uKind == 2) sunC = vec3(0.95, 0.97, 1.00);
+  else if (uKind == 5) sunC = vec3(1.00, 0.94, 0.78);
+  else if (uKind == 7) sunC = vec3(1.00, 0.50, 0.68);
+  else if (uKind == 6) sunC = uAccent;
+  else if (uKind == 0 || uKind == 4 || uKind == 9) sunC = vec3(1.00, 0.62, 0.28);
+  vec3 col = horCol;
 
   if (uv.y < horizon) {
     float sy = max(horizon - uv.y, 0.00055);
@@ -103,14 +90,14 @@ void main(){
         col = mix(ra, rb, rum);
       }
       if (ax < roadH) {
-        vec3 asp = vec3(0.10, 0.105, 0.12);
+        vec3 asp = vec3(0.18, 0.185, 0.20);
         if (uKind == 2) asp = vec3(0.50, 0.56, 0.62);
         else if (uKind == 3) asp = vec3(0.36, 0.24, 0.14);
-        else if (uKind == 5) asp = vec3(0.16, 0.18, 0.20);
+        else if (uKind == 5) asp = vec3(0.22, 0.24, 0.26);
         else if (uKind == 6) asp = vec3(0.07, 0.08, 0.16);
-        else if (uKind == 8) asp = vec3(0.18, 0.18, 0.20);
+        else if (uKind == 8) asp = vec3(0.22, 0.22, 0.24);
         else if (uKind == 1) asp = vec3(0.08, 0.05, 0.12);
-        else if (uKind == 4) asp = vec3(0.07, 0.08, 0.10);
+        else if (uKind == 4) asp = vec3(0.10, 0.11, 0.13);
         asp += (hash(vec2(floor(xw * 64.0), floor(z * 14.0))) - 0.5) * 0.05;
         col = asp;
         if (abs(ax - roadH + 0.04) < 0.038) {
@@ -132,10 +119,16 @@ void main(){
       }
     }
 
-    float fog = smoothstep(11.0, 30.0, z);
-    col = mix(col, horCol, fog);
+    float fog = smoothstep(14.0, 28.0, z);
+    if (uHasSky > 0.5) {
+      vec3 skyC = texture(uSky, vec2(uv.x, clamp(0.72, 0.0, 1.0))).rgb;
+      col = mix(col, skyC, fog * (uKind == 8 ? 0.38 : 0.5));
+    } else {
+      col = mix(col, horCol, fog);
+    }
 
     for (int i = 0; i < 28; i++) {
+      if (uKind == 8) break;
       float id = float(i);
       float zs = fract(hash(vec2(id, 1.7)) + uScroll * 0.045);
       float zw = 1.2 + zs * 34.0;
@@ -146,13 +139,7 @@ void main(){
       vec2 q = uv - vec2(sx, py);
       float sc = 0.78 / zw;
       if (sc < 0.0035) continue;
-      if (uKind == 8) {
-        float stem = smoothstep(sc * 0.10, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 2.4);
-        col = mix(col, vec3(0.28, 0.16, 0.07), stem);
-        float fr = length((q - vec2(0.0, sc * 2.05)) * vec2(1.0, 1.35));
-        float canopy = (1.0 - smoothstep(sc * 0.55, sc * 1.15, fr)) * step(q.y, sc * 2.7);
-        col = mix(col, vec3(0.08, 0.34, 0.10), canopy);
-      } else if (uKind == 2) {
+      if (uKind == 2) {
         float pine = smoothstep(sc * 0.62, 0.0, abs(q.x) + max(q.y, 0.0) * 0.32)
                    * step(0.0, q.y) * step(q.y, sc * 2.8);
         col = mix(col, vec3(0.14, 0.28, 0.24), pine);
@@ -182,9 +169,9 @@ void main(){
     if (rx < 0.028 && ry > 0.55) col += vec3(0.55, 0.65, 0.75) * 0.45;
   }
   if (uKind == 3 || uKind == 8) {
-    float hz = n2(uv * vec2(18.0, 4.0) + vec2(0.0, uTime * 0.7));
-    uv.x += 0.0;
-    col += vec3(1.0, 0.85, 0.4) * hz * 0.03 * uLoad;
+    float hz = n2(uv * vec2(22.0, 5.0) + vec2(uScroll * 0.4, uTime * 0.55));
+    float band = smoothstep(0.16, 0.0, abs(horizon - uv.y));
+    col += vec3(1.0, 0.90, 0.62) * hz * (0.045 + 0.05 * uLoad) * band;
   }
   if (uKind == 9) {
     float blink = step(0.5, fract(uTime * 2.2));
@@ -196,12 +183,14 @@ void main(){
   float vig = smoothstep(1.35, 0.22, length((uv - vec2(0.5, 0.48)) * vec2(1.15, 1.0)));
   col *= mix(0.62, 1.0, vig);
   col = pow(max(col, 0.0), vec3(0.92));
-  frag = vec4(col, 1.0);
+  float lip = uKind == 8 ? smoothstep(0.0, 0.045, horizon - uv.y) : 1.0;
+  frag = vec4(col, lip);
 }
 `;
 
 const VERT_PT = `#version 300 es
 precision highp float;
+precision highp int;
 layout(location=0) in vec4 a;
 uniform vec2 uRes;
 uniform int uKind;
@@ -225,6 +214,7 @@ void main(){
 
 const FRAG_PT = `#version 300 es
 precision highp float;
+precision highp int;
 uniform vec3 uAccent;
 uniform int uKind;
 in float vKind;
@@ -297,6 +287,7 @@ export class GlRoad {
   private buf: WebGLBuffer;
   private wasm: WasmCore | null = null;
   private last = performance.now();
+  private scroll = 0;
   fps = 0;
   private frames = 0;
   private fpsT = 0;
@@ -307,10 +298,12 @@ export class GlRoad {
   private dummy: WebGLTexture;
   private base = "/";
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, base = "/") {
+    this.base = base.replace(/\/?$/, "/");
     const gl = canvas.getContext("webgl2", {
       antialias: true,
-      alpha: false,
+      alpha: true,
+      premultipliedAlpha: false,
       powerPreference: "high-performance",
     });
     if (!gl) throw new Error("webgl2");
@@ -329,6 +322,8 @@ export class GlRoad {
       uSky: loc(gl, this.fs, "uSky"),
       uHasSky: loc(gl, this.fs, "uHasSky"),
       uScroll: loc(gl, this.fs, "uScroll"),
+      uShake: loc(gl, this.fs, "uShake"),
+      uBump: loc(gl, this.fs, "uBump"),
     };
     this.uPt = {
       uRes: loc(gl, this.pt, "uRes"),
@@ -347,7 +342,8 @@ export class GlRoad {
     gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0);
     gl.bindVertexArray(null);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(0, 0, 0, 0);
     const dummy = gl.createTexture();
     if (!dummy) throw new Error("tex");
     gl.bindTexture(gl.TEXTURE_2D, dummy);
@@ -393,13 +389,12 @@ export class GlRoad {
     const gl = this.gl;
     const w = Math.max(1, Math.floor(cssW * dpr));
     const h = Math.max(1, Math.floor(cssH * dpr));
-    if (gl.canvas.width === w && gl.canvas.height === h) return;
-    gl.canvas.width = w;
-    gl.canvas.height = h;
+    if (gl.canvas.width !== w) gl.canvas.width = w;
+    if (gl.canvas.height !== h) gl.canvas.height = h;
     gl.viewport(0, 0, w, h);
   }
 
-  frame(now: number, scene: Scene, speedMps: number, load: number) {
+  frame(now: number, scene: Scene, speedMps: number, load: number, shake = 0, bump = 0) {
     const gl = this.gl;
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
@@ -420,7 +415,10 @@ export class GlRoad {
     const sky1 = hexToRgb(scene.sky[1]);
     const res: [number, number] = [gl.canvas.width, gl.canvas.height];
 
-    gl.disable(gl.BLEND);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(this.fs);
     gl.uniform2f(this.uFs.uRes, res[0], res[1]);
     gl.uniform1f(this.uFs.uTime, now / 1000);
@@ -436,12 +434,16 @@ export class GlRoad {
     gl.bindTexture(gl.TEXTURE_2D, skyTex);
     gl.uniform1i(this.uFs.uSky, 0);
     gl.uniform1f(this.uFs.uHasSky, this.skyReady.has(scene.kind) ? 1 : 0);
-    gl.uniform1f(this.uFs.uScroll, (now / 1000) * (0.55 + speedMps * 0.085));
+    this.scroll += Math.max(0, speedMps) * dt * 0.11;
+    gl.uniform1f(this.uFs.uScroll, this.scroll);
+    gl.uniform1f(this.uFs.uShake, shake);
+    gl.uniform1f(this.uFs.uBump, bump);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-    if (wasm) {
+    if (wasm && kind !== 8) {
       const data = wasm.particles();
       gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
       gl.useProgram(this.pt);
       gl.uniform2f(this.uPt.uRes, res[0], res[1]);
       gl.uniform3f(this.uPt.uAccent, accent[0], accent[1], accent[2]);
