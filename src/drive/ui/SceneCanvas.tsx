@@ -28,7 +28,7 @@ export function SceneCanvas() {
     let last = performance.now();
     let lastKind = "";
     let travel = 0;
-    tributeFx.reset();
+    tributeFx.reset("florida");
     loadTributeSprites(base);
 
     const parent0 = canvas.parentElement;
@@ -80,7 +80,7 @@ export function SceneCanvas() {
       const st = useDrive.getState();
       const sc = sceneById(st.sceneId);
       if (sc.kind !== lastKind) {
-        tributeFx.reset();
+        tributeFx.reset(sc.kind);
         lastKind = sc.kind;
         travel = 0;
       }

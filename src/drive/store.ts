@@ -82,7 +82,7 @@ export const useDrive = create<DriveState>()(
       engineVolume: 0.68,
       muted: false,
       hudHidden: false,
-      dockOpen: true,
+      dockOpen: false,
       settingsOpen: false,
       wheelRight: false,
       isManual: false,
@@ -152,7 +152,7 @@ export const useDrive = create<DriveState>()(
       tick: (dt) => {
         const s = get();
         const scene = sceneById(s.sceneId);
-        const gpsLive = s.gpsStatus === "live" && !s.simulate;
+        const gpsLive = s.carBrowser && s.gpsStatus === "live" && !s.simulate;
         let next = s.simSpeedMps;
         let load = 0;
         let source: CabinSource = "sim";
@@ -170,7 +170,11 @@ export const useDrive = create<DriveState>()(
           const delta = target - next;
           next += delta * Math.min(1, dt * 8);
           load = Math.min(1, Math.max(0, Math.abs(delta) / 8 + 0.08));
-        } else if (s.demoOn && !s.carBrowser) {
+        } else if (s.carBrowser && !s.simulate) {
+          source = "gps";
+          next = Math.max(0, next - (2.2 + next * 0.18) * dt);
+          load = next > 1 ? 0.1 : 0;
+        } else if (s.demoOn) {
           source = "demo";
           demoT += dt;
           const wave = 28 + 18 * Math.sin(demoT * 0.13) + 8 * Math.sin(demoT * 0.4);
@@ -178,10 +182,6 @@ export const useDrive = create<DriveState>()(
           const delta = target - next;
           next += delta * Math.min(1, dt * 2.2);
           load = Math.min(1, Math.max(0.08, Math.abs(delta) / 8 + target / 70));
-        } else if (s.carBrowser && !s.simulate) {
-          source = "gps";
-          next = Math.max(0, next - (2.2 + next * 0.18) * dt);
-          load = next > 1 ? 0.1 : 0;
         } else {
           const max = 62;
           if (s.throttle) {
@@ -243,7 +243,6 @@ export const useDrive = create<DriveState>()(
         hudHidden: s.hudHidden,
         wheelRight: s.wheelRight,
         pinnedKmh: s.pinnedKmh,
-        dockOpen: s.dockOpen,
         hypeOn: s.hypeOn,
       }),
     },

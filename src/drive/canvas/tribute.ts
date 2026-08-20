@@ -7,12 +7,82 @@ const PRODUCE: Record<0 | 1 | 2, [string, string, string]> = {
   1: ["cucumber-0", "cucumber-1", "cucumber-2"],
   2: ["hotdog-0", "hotdog-1", "hotdog-2"],
 };
-const PALM_NAMES = ["palm-0", "palm-1", "palm-2"] as const;
 const CLOUD_NAMES = ["cloud-0", "cloud-1", "cloud-2"] as const;
-const SPRITE_NAMES = [...PRODUCE[0], ...PRODUCE[1], ...PRODUCE[2], "gator", ...PALM_NAMES, ...CLOUD_NAMES];
+
+type KindFx = {
+  props: string[];
+  propH: number;
+  roadside: number;
+  count: number;
+  clouds: boolean;
+  cloudAlpha: number;
+  weather: "produce" | "petals" | null;
+  gators: boolean;
+};
+
+const FX: Partial<Record<SceneKind, KindFx>> = {
+  florida: {
+    props: ["palm-0", "palm-1", "palm-2"],
+    propH: 1.62,
+    roadside: 0.95,
+    count: 8,
+    clouds: true,
+    cloudAlpha: 0.78,
+    weather: "produce",
+    gators: true,
+  },
+  snow: {
+    props: ["pine-0", "pine-1"],
+    propH: 1.7,
+    roadside: 0.95,
+    count: 8,
+    clouds: true,
+    cloudAlpha: 0.7,
+    weather: null,
+    gators: false,
+  },
+  desert: {
+    props: ["cactus-0", "cactus-1"],
+    propH: 1.25,
+    roadside: 1.0,
+    count: 8,
+    clouds: true,
+    cloudAlpha: 0.55,
+    weather: null,
+    gators: false,
+  },
+  lantern: {
+    props: ["cherry-0", "lantern-0", "cherry-0"],
+    propH: 1.55,
+    roadside: 0.9,
+    count: 8,
+    clouds: false,
+    cloudAlpha: 0,
+    weather: "petals",
+    gators: false,
+  },
+};
+
+const SPRITE_NAMES = [
+  ...PRODUCE[0],
+  ...PRODUCE[1],
+  ...PRODUCE[2],
+  "gator",
+  "palm-0",
+  "palm-1",
+  "palm-2",
+  ...CLOUD_NAMES,
+  "pine-0",
+  "pine-1",
+  "cactus-0",
+  "cactus-1",
+  "lantern-0",
+  "cherry-0",
+  "petal-0",
+];
+
 const MAX_DROPS = 46;
 const GATOR_LEN = 1.72;
-const PALM_H = 2.35;
 const HIT_Z = 1.48;
 const WORLD_LEN = 36;
 
@@ -29,6 +99,7 @@ type Produce = {
   kind: 0 | 1 | 2;
   variant: 0 | 1 | 2;
   settled: boolean;
+  petal: boolean;
 };
 
 type Gator = {
@@ -39,10 +110,10 @@ type Gator = {
   facing: 1 | -1;
 };
 
-type Palm = {
+type Prop = {
   xw: number;
   z: number;
-  variant: 0 | 1 | 2;
+  variant: number;
   lean: number;
 };
 
@@ -77,9 +148,10 @@ function advance(z: number, speed: number, dt: number) {
 }
 
 export class TributeFx {
+  private kind: SceneKind = "florida";
   private gators: Gator[] = [];
   private drops: Produce[] = [];
-  private palms: Palm[] = [];
+  private props: Prop[] = [];
   private clouds: Cloud[] = [];
   private spawn = 0;
   private rain = 2.5;
@@ -92,37 +164,46 @@ export class TributeFx {
     return hit;
   }
 
-  reset() {
-    this.gators = [
-      { xw: -0.5, z: 14.5, hit: false, squash: 0, facing: 1 },
-      { xw: 0.46, z: 8.2, hit: false, squash: 0, facing: -1 },
-      { xw: -0.06, z: 3.6, hit: false, squash: 0, facing: 1 },
-    ];
+  reset(kind: SceneKind = "florida") {
+    this.kind = kind;
+    const spec = FX[kind];
+    this.gators = [];
     this.drops = [];
-    this.palms = [];
+    this.props = [];
     this.clouds = [];
-    for (let i = 0; i < 12; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      this.palms.push({
-        xw: side * (ROAD_H + 0.72 + (i % 5) * 0.38),
-        z: 3.2 + ((i * 2.7) % WORLD_LEN),
-        variant: (i % 3) as 0 | 1 | 2,
-        lean: side * (0.04 + (i % 4) * 0.03),
-      });
-    }
-    for (let i = 0; i < 7; i++) {
-      this.clouds.push({
-        x: (i * 0.23 + 0.04) % 1.4 - 0.15,
-        y: 0.07 + (i % 4) * 0.055,
-        s: 0.45 + (i % 3) * 0.28,
-        variant: (i % 3) as 0 | 1 | 2,
-        drift: 0.012 + (i % 5) * 0.006,
-      });
-    }
     this.spawn = 0;
-    this.rain = 2.5;
+    this.rain = -2;
     this.idle = 4;
     this.bump = false;
+    if (!spec) return;
+
+    if (spec.gators) {
+      this.gators = [
+        { xw: -0.5, z: 14.5, hit: false, squash: 0, facing: 1 },
+        { xw: 0.46, z: 8.2, hit: false, squash: 0, facing: -1 },
+        { xw: -0.06, z: 3.6, hit: false, squash: 0, facing: 1 },
+      ];
+    }
+    for (let i = 0; i < spec.count; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      this.props.push({
+        xw: side * (ROAD_H + spec.roadside + (i % 5) * 0.38),
+        z: 6.5 + ((i * 3.4) % (WORLD_LEN - 8)),
+        variant: i % spec.props.length,
+        lean: side * (0.02 + (i % 4) * 0.02),
+      });
+    }
+    if (spec.clouds) {
+      for (let i = 0; i < 7; i++) {
+        this.clouds.push({
+          x: (i * 0.23 + 0.04) % 1.4 - 0.15,
+          y: 0.07 + (i % 4) * 0.055,
+          s: 0.45 + (i % 3) * 0.28,
+          variant: (i % 3) as 0 | 1 | 2,
+          drift: 0.012 + (i % 5) * 0.006,
+        });
+      }
+    }
   }
 
   private spawnGator() {
@@ -139,84 +220,87 @@ export class TributeFx {
     });
   }
 
-  private spawnDrop() {
+  private spawnDrop(petal: boolean) {
     const onRoad = Math.random() < 0.78;
     const xw = onRoad ? (Math.random() - 0.5) * ROAD_H * 1.55 : (Math.random() < 0.5 ? -1 : 1) * (ROAD_H + 0.2 + Math.random() * 0.7);
     this.drops.push({
       xw,
-      z: 8 + Math.random() * 18,
+      z: 12 + Math.random() * 16,
       yw: 0.42 + Math.random() * 0.85,
       vy: 0.18 + Math.random() * 0.35,
       rot: Math.random() * Math.PI * 2,
       spin: (Math.random() - 0.5) * (6 + Math.random() * 9),
       tumble: Math.random() * Math.PI * 2,
       tumbleSpin: (Math.random() - 0.5) * 7,
-      s: 0.7 + Math.random() * 0.8,
+      s: petal ? 0.28 + Math.random() * 0.28 : 0.45 + Math.random() * 0.4,
       kind: Math.floor(Math.random() * 3) as 0 | 1 | 2,
       variant: Math.floor(Math.random() * 3) as 0 | 1 | 2,
       settled: false,
+      petal,
     });
   }
 
   tick(dt: number, speed: number, kind: SceneKind): HypeLine | null {
+    if (kind !== this.kind) this.reset(kind);
+    const spec = FX[kind];
     let event: HypeLine | null = null;
-    if (kind !== "florida") {
-      this.idle = 4;
-      return event;
-    }
+    if (!spec) return event;
 
-    this.rain += dt * (speed > 0.6 ? 0.55 : 0.12);
-    if (this.rain > 1 && this.drops.length < MAX_DROPS) {
-      this.rain = Math.random() * -1.4;
-      const n = 1 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < n; i++) this.spawnDrop();
-    }
-
-    for (const d of this.drops) {
-      d.z = advance(d.z, speed, dt);
-      d.rot += d.spin * dt;
-      d.tumble += d.tumbleSpin * dt;
-      if (d.settled) {
-        d.spin *= Math.exp(-dt * 1.8);
-        d.tumbleSpin *= Math.exp(-dt * 2.4);
-        continue;
+    if (spec.weather) {
+      this.rain += dt * (speed > 1.4 ? 0.45 : 0);
+      if (this.rain > 1 && this.drops.length < MAX_DROPS) {
+        this.rain = Math.random() * -1.4;
+        const n = 1 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < n; i++) this.spawnDrop(spec.weather === "petals");
       }
-      d.vy += 0.85 * dt;
-      d.yw -= d.vy * dt;
-      d.xw += (Math.random() - 0.5) * 0.15 * dt;
-      if (d.yw <= 0) {
-        d.yw = 0;
-        d.settled = true;
-        d.vy = 0;
-        d.spin *= 0.2;
-        d.tumbleSpin *= 0.12;
+      for (const d of this.drops) {
+        d.z = advance(d.z, speed, dt);
+        d.rot += d.spin * dt;
+        d.tumble += d.tumbleSpin * dt;
+        if (d.settled) {
+          d.spin *= Math.exp(-dt * 1.8);
+          d.tumbleSpin *= Math.exp(-dt * 2.4);
+          continue;
+        }
+        d.vy += 0.85 * dt;
+        d.yw -= d.vy * dt;
+        d.xw += (Math.random() - 0.5) * 0.15 * dt;
+        if (d.yw <= 0) {
+          d.yw = 0;
+          d.settled = true;
+          d.vy = 0;
+          d.spin *= 0.2;
+          d.tumbleSpin *= 0.12;
+        }
       }
+      this.drops = this.drops.filter((d) => d.z > 1.15 && d.z < WORLD_LEN + 8);
     }
-    this.drops = this.drops.filter((d) => d.z > 1.15 && d.z < WORLD_LEN + 8);
 
-    const live = this.gators.filter((g) => !g.hit && g.z > 5).length;
-    this.spawn += dt * (0.1 + speed * 0.022);
-    if (this.spawn > 1 && live < 4) {
-      this.spawn = 0;
-      this.spawnGator();
-    }
-    for (const g of this.gators) {
-      g.z = advance(g.z, speed, dt);
-      if (g.hit) g.squash = Math.min(1, g.squash + dt * 3.6);
-      if (!g.hit && g.z < HIT_Z) {
-        g.hit = true;
-        this.bump = true;
-        const hits: HypeLine[] = ["jesus", "oh-my", "holy", "gator", "oh-no"];
-        event = hits[Math.floor(Math.random() * hits.length)]!;
+    if (spec.gators) {
+      const live = this.gators.filter((g) => !g.hit && g.z > 5).length;
+      this.spawn += dt * (0.1 + speed * 0.022);
+      if (this.spawn > 1 && live < 4) {
+        this.spawn = 0;
+        this.spawnGator();
       }
+      for (const g of this.gators) {
+        g.z = advance(g.z, speed, dt);
+        if (g.hit) g.squash = Math.min(1, g.squash + dt * 3.6);
+        if (!g.hit && g.z < HIT_Z) {
+          g.hit = true;
+          this.bump = true;
+          const hits: HypeLine[] = ["jesus", "oh-my", "holy", "gator", "oh-no"];
+          event = hits[Math.floor(Math.random() * hits.length)]!;
+        }
+      }
+      this.gators = this.gators.filter((g) => g.z > 0.72 && g.squash < 1);
     }
-    this.gators = this.gators.filter((g) => g.z > 0.72 && g.squash < 1);
 
-    for (const p of this.palms) {
+    for (const p of this.props) {
       p.z = advance(p.z, speed, dt);
-      if (p.z < 1.55) {
+      if (p.z < 2.8) {
         p.z += WORLD_LEN + Math.random() * 4;
-        p.variant = Math.floor(Math.random() * 3) as 0 | 1 | 2;
+        p.variant = Math.floor(Math.random() * spec.props.length);
       }
     }
     for (const c of this.clouds) {
@@ -224,34 +308,36 @@ export class TributeFx {
       if (c.x < -0.35) c.x += 1.55;
     }
 
-    this.idle += dt;
-    if (!event && this.idle > 16 && speed > 3) {
-      this.idle = 0;
-      const pool: HypeLine[] = ["oh-my", "holy", "bananas", "hotdogs", "cukes", "jesus"];
-      event = pool[Math.floor(Math.random() * pool.length)]!;
+    if (spec.gators) {
+      this.idle += dt;
+      if (!event && this.idle > 16 && speed > 3) {
+        this.idle = 0;
+        const pool: HypeLine[] = ["oh-my", "holy", "bananas", "hotdogs", "cukes", "jesus"];
+        event = pool[Math.floor(Math.random() * pool.length)]!;
+      }
     }
     return event;
   }
 
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, kind: SceneKind, t: number, shake = 0, bump = 0) {
     ctx.clearRect(0, 0, w, h);
-    if (kind !== "florida") return;
+    const spec = FX[kind];
+    if (!spec) return;
     ctx.save();
     ctx.translate(Math.sin(t * 63) * shake * 10, bump * 16 + Math.sin(t * 81) * shake * 6);
 
-    for (const c of this.clouds) drawCloud(ctx, w, h, c);
+    for (const c of this.clouds) drawCloud(ctx, w, h, c, spec.cloudAlpha);
 
     type Sprite = { z: number; draw: () => void };
     const queue: Sprite[] = [];
-
-    for (const p of this.palms) {
-      queue.push({ z: p.z, draw: () => drawPalm(ctx, w, h, p) });
+    for (const p of this.props) {
+      queue.push({ z: p.z, draw: () => drawProp(ctx, w, h, p, spec.props, spec.propH) });
     }
     for (const g of this.gators) {
       queue.push({ z: g.z, draw: () => drawGator(ctx, w, h, g) });
     }
     for (const d of this.drops) {
-      queue.push({ z: d.z - d.yw * 0.15, draw: () => drawProduce(ctx, w, h, d) });
+      queue.push({ z: d.z - d.yw * 0.15, draw: () => (d.petal ? drawPetal(ctx, w, h, d) : drawProduce(ctx, w, h, d)) });
     }
     queue.sort((a, b) => b.z - a.z);
     for (const s of queue) s.draw();
@@ -260,13 +346,15 @@ export class TributeFx {
   }
 }
 
-function drawPalm(ctx: CanvasRenderingContext2D, w: number, h: number, p: Palm) {
-  const img = spr(PALM_NAMES[p.variant]!) ?? spr("palm-0");
+function drawProp(ctx: CanvasRenderingContext2D, w: number, h: number, p: Prop, names: string[], height: number) {
+  const name = names[p.variant % names.length]!;
+  const img = spr(name) ?? spr(names[0]!);
   if (!img) return;
   const pr = project(p.xw, p.z, w, h);
-  const dh = (PALM_H / pr.z) * h;
+  if (pr.z < 2.6) return;
+  const dh = Math.min((height / pr.z) * h, h * 0.46);
   const dw = dh * (img.naturalWidth / Math.max(1, img.naturalHeight));
-  const fog = Math.max(0, Math.min(1, (pr.z - 12) / 16));
+  const fog = Math.max(0, Math.min(1, (pr.z - 14) / 16));
   ctx.save();
   ctx.translate(pr.x, pr.y);
   ctx.rotate(p.lean);
@@ -294,13 +382,13 @@ function drawGator(ctx: CanvasRenderingContext2D, w: number, h: number, g: Gator
   ctx.restore();
 }
 
-function drawCloud(ctx: CanvasRenderingContext2D, w: number, h: number, c: Cloud) {
+function drawCloud(ctx: CanvasRenderingContext2D, w: number, h: number, c: Cloud, alpha: number) {
   const img = spr(CLOUD_NAMES[c.variant]!) ?? spr("cloud-0");
   if (!img) return;
-  const dw = w * 0.34 * c.s;
+  const dw = w * 0.22 * c.s;
   const dh = dw * (img.naturalHeight / Math.max(1, img.naturalWidth));
   ctx.save();
-  ctx.globalAlpha = 0.55 + c.s * 0.25;
+  ctx.globalAlpha = (0.55 + c.s * 0.25) * alpha;
   ctx.drawImage(img, c.x * w - dw * 0.3, c.y * h - dh * 0.35, dw, dh);
   ctx.restore();
 }
@@ -310,8 +398,8 @@ function drawProduce(ctx: CanvasRenderingContext2D, w: number, h: number, d: Pro
   const img = spr(name) ?? spr(PRODUCE[d.kind][0]!);
   if (!img) return;
   const p = project(d.xw, d.z, w, h, d.yw);
-  const world = (d.kind === 0 ? 0.46 : d.kind === 1 ? 0.72 : 0.58) * d.s;
-  const dw = world * p.scale * w;
+  const world = (d.kind === 0 ? 0.34 : d.kind === 1 ? 0.5 : 0.42) * d.s;
+  const dw = Math.min(world * p.scale * w, w * 0.1);
   const dh = dw * (img.naturalHeight / Math.max(1, img.naturalWidth));
   const near = Math.max(0, Math.min(1, 1.15 - d.z / 22));
   ctx.save();
@@ -322,6 +410,20 @@ function drawProduce(ctx: CanvasRenderingContext2D, w: number, h: number, d: Pro
   if (!d.settled && d.yw > 0.2) ctx.filter = `blur(${Math.min(2.8, d.yw * 2.2).toFixed(1)}px)`;
   ctx.drawImage(img, -dw / 2, d.settled ? -dh * 0.85 : -dh / 2, dw, dh);
   ctx.filter = "none";
+  ctx.restore();
+}
+
+function drawPetal(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produce) {
+  const img = spr("petal-0");
+  if (!img) return;
+  const p = project(d.xw, d.z, w, h, d.yw);
+  const dw = 0.28 * d.s * p.scale * w;
+  const dh = dw * (img.naturalHeight / Math.max(1, img.naturalWidth));
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(d.rot);
+  ctx.globalAlpha = 0.7;
+  ctx.drawImage(img, -dw / 2, d.settled ? -dh * 0.7 : -dh / 2, dw, dh);
   ctx.restore();
 }
 

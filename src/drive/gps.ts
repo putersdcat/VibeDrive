@@ -4,6 +4,9 @@ import { useDrive } from "./store";
 type Fix = { lat: number; lon: number; at: number };
 
 export function startGpsWatch(): () => void {
+  if (!detectTeslaBrowser()) {
+    return () => undefined;
+  }
   if (!("geolocation" in navigator)) {
     useDrive.getState().setGps("unavailable", 0);
     return () => undefined;

@@ -16,7 +16,6 @@ export function Hud() {
   const gpsStatus = useDrive((s) => s.gpsStatus);
   const carBrowser = useDrive((s) => s.carBrowser);
   const fps = useDrive((s) => s.fps);
-  const throttle = useDrive((s) => s.throttle);
 
   if (hudHidden) return null;
   const scene = sceneById(sceneId);
@@ -31,19 +30,15 @@ export function Hud() {
         ? "Pinned speed"
         : source === "gps"
           ? carBrowser
-            ? "Car GPS live"
-            : "GPS live"
-          : gpsStatus === "denied"
-            ? carBrowser
-              ? "Location denied — allow GPS in the Tesla browser"
-              : "Pedals · GPS off"
-            : gpsStatus === "waiting" && carBrowser
-              ? "Waiting on this car's GPS"
-              : throttle
-                ? "Pedals"
-                : carBrowser
-                  ? "Car GPS"
-                  : "GPS · pedals on a desk";
+            ? gpsStatus === "live"
+              ? "Car GPS live"
+              : gpsStatus === "waiting"
+                ? "Waiting on this car's GPS"
+                : gpsStatus === "denied"
+                  ? "Location denied — allow GPS in the Tesla browser"
+                  : "Car GPS"
+            : "Car GPS"
+          : "Pedals";
 
   return (
     <>

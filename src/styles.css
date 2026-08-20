@@ -23,7 +23,8 @@
   }
   html,
   body,
-  #app {
+  #app,
+  #root {
     height: 100%;
   }
   html {
@@ -430,6 +431,15 @@ html[data-theme="light"] {
   opacity: 0.9;
 }
 
+.vd-dock-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.vd-dock-layer > * {
+  pointer-events: auto;
+}
 .vd-dock {
   position: absolute;
   top: 64px;
@@ -442,24 +452,54 @@ html[data-theme="light"] {
   background: var(--glass);
   backdrop-filter: blur(22px) saturate(170%);
   border-radius: var(--radius-l);
-  padding: 16px;
+  padding: 16px 16px 16px 22px;
   overscroll-behavior: contain;
+  overflow: visible;
 }
 .vd-dock-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   margin-bottom: 12px;
   font-weight: 600;
 }
-.vd-dock-plan {
-  color: var(--fg-dim);
+.vd-dock-close {
+  border: 1px solid var(--glass-edge);
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
+  color: var(--fg-muted);
+  border-radius: 999px;
+  padding: 6px 12px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  min-height: 32px;
+}
+.vd-dock-slider {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  z-index: 6;
+  width: 36px;
+  height: 72px;
+  border: 1px solid var(--glass-edge);
+  background: var(--glass);
+  color: var(--fg);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(16px);
+  touch-action: none;
+  transform: translateY(-50%);
+}
+.vd-dock-slider.is-open {
+  right: auto;
+  left: -14px;
 }
 .vd-scene-grid {
   display: grid;
   gap: 10px;
+  max-height: calc(100% - 44px);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 .vd-scene {
   display: grid;
@@ -508,22 +548,6 @@ html[data-theme="light"] {
   font-size: 12px;
   line-height: 1.35;
 }
-.vd-dock-handle {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  z-index: 5;
-  width: 32px;
-  height: 56px;
-  border: 1px solid var(--glass-edge);
-  background: var(--glass);
-  color: var(--fg);
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  backdrop-filter: blur(16px);
-}
-
 .vd-player {
   position: absolute;
   left: 16px;

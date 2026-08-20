@@ -28,38 +28,67 @@ function Thumb({ scene, selected }: { scene: Scene; selected: boolean }) {
   );
 }
 
+function Slider({ open, onToggle }: { open: boolean; onToggle: (next: boolean) => void }) {
+  const startX = useRef(0);
+  const moved = useRef(false);
+  return (
+    <button
+      type="button"
+      className={open ? "vd-dock-slider is-open" : "vd-dock-slider"}
+      aria-label={open ? "Hide scenes" : "Show scenes"}
+      aria-pressed={open}
+      onPointerDown={(e) => {
+        startX.current = e.clientX;
+        moved.current = false;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (Math.abs(e.clientX - startX.current) > 10) moved.current = true;
+      }}
+      onPointerUp={(e) => {
+        const dx = e.clientX - startX.current;
+        if (open && dx > 40) onToggle(false);
+        else if (!open && dx < -40) onToggle(true);
+        else if (!moved.current) onToggle(!open);
+      }}
+    >
+      <svg viewBox="0 0 14 20" width="12" height="16" aria-hidden>
+        <path
+          d={open ? "M9.2 3.6 3.8 10l5.4 6.4" : "M4.8 3.6 10.2 10l-5.4 6.4"}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
 export function SceneDock() {
   const open = useDrive((s) => s.dockOpen);
   const sceneId = useDrive((s) => s.sceneId);
   const setScene = useDrive((s) => s.setScene);
   const setDockOpen = useDrive((s) => s.setDockOpen);
+
   if (!open) {
     return (
-      <button
-        type="button"
-        className="vd-dock-handle"
-        aria-label="Show scenes"
-        onClick={() => setDockOpen(true)}
-      >
-        <svg viewBox="0 0 14 20" width="12" height="16" aria-hidden>
-          <path
-            d="M4.8 3.6 10.2 10l-5.4 6.4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.1"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+      <div className="vd-dock-layer">
+        <Slider open={false} onToggle={setDockOpen} />
+      </div>
     );
   }
 
   return (
+    <div className="vd-dock-layer">
     <aside className="vd-dock">
+      <Slider open onToggle={setDockOpen} />
       <div className="vd-dock-head">
         <span>Scenes</span>
-        <span className="vd-dock-plan">10 open · garage tributes</span>
+        <button type="button" className="vd-dock-close" onClick={() => setDockOpen(false)}>
+          Close
+        </button>
       </div>
       <div className="vd-scene-grid">
         {SCENES.map((scene) => {
@@ -98,5 +127,6 @@ export function SceneDock() {
         })}
       </div>
     </aside>
+    </div>
   );
 }

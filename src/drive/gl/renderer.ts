@@ -122,44 +122,9 @@ void main(){
     float fog = smoothstep(14.0, 28.0, z);
     if (uHasSky > 0.5) {
       vec3 skyC = texture(uSky, vec2(uv.x, clamp(0.72, 0.0, 1.0))).rgb;
-      col = mix(col, skyC, fog * (uKind == 8 ? 0.38 : 0.5));
+      col = mix(col, skyC, fog * 0.38);
     } else {
       col = mix(col, horCol, fog);
-    }
-
-    for (int i = 0; i < 28; i++) {
-      if (uKind == 8) break;
-      float id = float(i);
-      float zs = fract(hash(vec2(id, 1.7)) + uScroll * 0.045);
-      float zw = 1.2 + zs * 34.0;
-      float side = hash(vec2(id, 3.1)) > 0.5 ? 1.0 : -1.0;
-      float xoff = side * (roadH + 0.55 + hash(vec2(id, 8.8)) * 2.2);
-      float sx = 0.5 + (xoff / zw) / (aspect * 1.08);
-      float py = horizon - 0.34 / zw;
-      vec2 q = uv - vec2(sx, py);
-      float sc = 0.78 / zw;
-      if (sc < 0.0035) continue;
-      if (uKind == 2) {
-        float pine = smoothstep(sc * 0.62, 0.0, abs(q.x) + max(q.y, 0.0) * 0.32)
-                   * step(0.0, q.y) * step(q.y, sc * 2.8);
-        col = mix(col, vec3(0.14, 0.28, 0.24), pine);
-      } else if (uKind == 3) {
-        float cact = smoothstep(sc * 0.11, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 1.8);
-        col = mix(col, vec3(0.20, 0.40, 0.16), cact);
-      } else if (uKind == 7) {
-        float pag = smoothstep(sc * 0.40, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 1.9);
-        col = mix(col, vec3(0.18, 0.05, 0.09), pag);
-        col += vec3(1.0, 0.42, 0.58) * exp(-length(q - vec2(0.0, sc * 1.45)) * 22.0 * zw) * 0.7;
-      } else if (uKind == 1) {
-        float bld = smoothstep(sc * 0.55, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * (1.6 + hash(vec2(id,9.0))));
-        col = mix(col, vec3(0.08, 0.03, 0.16), bld);
-        col += uAccent * exp(-length(q - vec2(0.0, sc * 1.1)) * 18.0 * zw) * 0.55;
-      } else {
-        float pole = smoothstep(sc * 0.045, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 2.2);
-        col = mix(col, vec3(0.09, 0.09, 0.10), pole);
-        vec3 lamp = uKind == 5 ? vec3(0.85, 0.95, 1.0) : vec3(1.0, 0.80, 0.42);
-        col += lamp * exp(-length(q - vec2(0.0, sc * 2.25)) * (32.0 * zw)) * 0.95;
-      }
     }
   }
 
@@ -183,7 +148,7 @@ void main(){
   float vig = smoothstep(1.35, 0.22, length((uv - vec2(0.5, 0.48)) * vec2(1.15, 1.0)));
   col *= mix(0.62, 1.0, vig);
   col = pow(max(col, 0.0), vec3(0.92));
-  float lip = uKind == 8 ? smoothstep(0.0, 0.045, horizon - uv.y) : 1.0;
+  float lip = smoothstep(0.0, 0.045, horizon - uv.y);
   frag = vec4(col, lip);
 }
 `;

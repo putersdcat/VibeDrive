@@ -162,7 +162,7 @@ export function DriveApp({ account }: { account?: ReactNode }) {
           <span className="vd-intro-hint">
             {carBrowser
               ? "This car's GPS drives the cabin"
-              : "Open in the Tesla browser — GPS is the speed source"}
+              : "Throttle and brake on a desk — GPS only in the Tesla browser"}
           </span>
         </button>
       ) : (

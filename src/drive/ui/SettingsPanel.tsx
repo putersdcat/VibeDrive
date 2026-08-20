@@ -85,18 +85,20 @@ export function SettingsPanel() {
               </button>
             </div>
           </div>
-          <div className="vd-row">
-            <span>Use pedals instead of GPS</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={simulate}
-              className={simulate ? "vd-switch is-on" : "vd-switch"}
-              onClick={() => setSimulate(!simulate)}
-            >
-              <span />
-            </button>
-          </div>
+          {carBrowser ? (
+            <div className="vd-row">
+              <span>Use pedals instead of GPS</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={simulate}
+                className={simulate ? "vd-switch is-on" : "vd-switch"}
+                onClick={() => setSimulate(!simulate)}
+              >
+                <span />
+              </button>
+            </div>
+          ) : null}
           <div className="vd-row">
             <span>Pin speed</span>
             <button
@@ -132,8 +134,7 @@ export function SettingsPanel() {
             </div>
           )}
           <p className="vd-hint">
-            In a Tesla, speed is the in-car browser GPS. On a desk, use pedals, pin, or the local demo wave — nothing
-            leaves this tab.
+            In a Tesla, speed is the in-car browser GPS. On a desk the pedals drive it — nothing leaves this tab.
           </p>
         </section>
 
