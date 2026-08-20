@@ -13,8 +13,6 @@ export function Hud() {
   const gear = useDrive((s) => s.gear);
   const setManual = useDrive((s) => s.setManual);
   const source = useDrive((s) => s.source);
-  const teslaStatus = useDrive((s) => s.teslaStatus);
-  const teslaError = useDrive((s) => s.teslaError);
   const gpsStatus = useDrive((s) => s.gpsStatus);
   const carBrowser = useDrive((s) => s.carBrowser);
   const fps = useDrive((s) => s.fps);
@@ -27,29 +25,25 @@ export function Hud() {
   const redlineStart = 0.82;
 
   const notice =
-    teslaStatus === "connecting"
-      ? "Tesla connecting"
-      : teslaStatus === "error"
-        ? teslaError || "Tesla stream error"
-        : gpsStatus === "denied"
+    source === "demo"
+      ? "Cabin demo"
+      : source === "pin"
+        ? "Pinned speed"
+        : source === "gps"
           ? carBrowser
-            ? "Location denied — allow GPS in the Tesla browser"
-            : "Location denied"
-          : gpsStatus === "waiting" && carBrowser
-            ? "Waiting on this car's GPS"
-            : source === "tesla"
-              ? "Tesla stream (optional)"
-              : source === "gps"
-                ? carBrowser
-                  ? "Car GPS live"
-                  : "GPS live"
-                : source === "pin"
-                  ? "Pinned speed"
-                  : throttle
-                    ? "Simulated throttle"
-                    : carBrowser
-                      ? "Car GPS"
-                      : "GPS · pedals on a desk";
+            ? "Car GPS live"
+            : "GPS live"
+          : gpsStatus === "denied"
+            ? carBrowser
+              ? "Location denied — allow GPS in the Tesla browser"
+              : "Pedals · GPS off"
+            : gpsStatus === "waiting" && carBrowser
+              ? "Waiting on this car's GPS"
+              : throttle
+                ? "Pedals"
+                : carBrowser
+                  ? "Car GPS"
+                  : "GPS · pedals on a desk";
 
   return (
     <>

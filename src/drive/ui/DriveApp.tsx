@@ -2,7 +2,6 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { SCENES, sceneById, TRACKS } from "../scenes";
 import { driveEngine } from "../engine";
 import { lofiPlayer } from "../music";
-import { teslaStream } from "../telemetry";
 import { applyCarBrowserDefaults, startGpsWatch } from "../gps";
 import { cabinHype } from "../callouts";
 import { useDrive } from "../store";
@@ -58,17 +57,6 @@ function useGps() {
   }, [started]);
 }
 
-function useTesla() {
-  const started = useDrive((s) => s.started);
-  const teslaLink = useDrive((s) => s.teslaLink);
-  useEffect(() => {
-    if (!started) return;
-    teslaStream.connect();
-    return () => teslaStream.stop();
-  }, [started, teslaLink]);
-}
-
-
 function useKeys() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -122,7 +110,6 @@ export function DriveApp({ account }: { account?: ReactNode }) {
   useTheme();
   useDriveLoop();
   useGps();
-  useTesla();
   useKeys();
 
   useEffect(() => {

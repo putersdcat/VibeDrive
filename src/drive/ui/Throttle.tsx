@@ -10,7 +10,7 @@ export function Throttle() {
   const carBrowser = useDrive((s) => s.carBrowser);
   const simulate = useDrive((s) => s.simulate);
   const gpsStatus = useDrive((s) => s.gpsStatus);
-  if (pinSpeed || source === "tesla") return null;
+  if (pinSpeed || source === "demo") return null;
   if (carBrowser && !simulate) return null;
   if (gpsStatus === "live" && !simulate) return null;
 

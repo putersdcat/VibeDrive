@@ -7,12 +7,8 @@ export function PrivacyPage() {
         <h1>Privacy</h1>
         <p>
           VibeDrive reads GPS in this browser so the scenery and engine follow real speed. In a Tesla that is the
-          in-car browser's Geolocation API (coords.speed) — not Tesla Fleet, not Tessie. Coordinates never leave
-          the device. There is no analytics pixel and no third-party map tile call.
-        </p>
-        <p>
-          Optional Tessie / custom WebSocket pairing (token, VIN, URL) is stored only in this browser's
-          localStorage and is never uploaded.
+          in-car browser's Geolocation API (coords.speed). Coordinates never leave the device. There is no
+          analytics pixel, no third-party map call, and no vehicle token or WebSocket.
         </p>
         <p>
           Sign-in (Google or X) is optional and only identifies you so cabin settings can follow the account. Engine
