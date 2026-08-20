@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { sceneById, TRACKS } from "../scenes";
 import { driveEngine } from "../engine";
 import { lofiPlayer } from "../music";
+import { teslaStream } from "../telemetry";
 import { useDrive } from "../store";
 import { HeaderBar } from "./HeaderBar";
 import { Hud } from "./Hud";
@@ -69,6 +70,16 @@ function useGps() {
   }, []);
 }
 
+function useTesla() {
+  const started = useDrive((s) => s.started);
+  const teslaLink = useDrive((s) => s.teslaLink);
+  useEffect(() => {
+    if (!started) return;
+    teslaStream.connect();
+    return () => teslaStream.stop();
+  }, [started, teslaLink]);
+}
+
 const SCENE_HOTKEYS = [
   "forge-v8",
   "signal-bloom",
@@ -132,12 +143,21 @@ export function DriveApp({ account }: { account?: ReactNode }) {
   useTheme();
   useDriveLoop();
   useGps();
+  useTesla();
   useKeys();
 
   useEffect(() => {
-    void useDrive.persist.rehydrate();
-    const t = window.setTimeout(() => setBooted(true), 1100);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    const finish = () => {
+      if (cancelled) return;
+      window.setTimeout(() => {
+        if (!cancelled) setBooted(true);
+      }, 900);
+    };
+    void Promise.resolve(useDrive.persist.rehydrate()).then(finish, finish);
+    return () => {
+      cancelled = true;
+    };
   }, [setBooted]);
 
   useEffect(() => {
@@ -203,7 +223,7 @@ export function DriveApp({ account }: { account?: ReactNode }) {
           <span className="vd-logo vd-logo-lg" />
           <span className="vd-wordmark">VibeDrive</span>
           <span className="vd-intro-copy">Tap to ignite the cabin</span>
-          <span className="vd-intro-hint">Throttle · GPS · eight scenes</span>
+          <span className="vd-intro-hint">Throttle · GPS · Tesla</span>
         </button>
       ) : (
         <>

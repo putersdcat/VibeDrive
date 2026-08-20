@@ -22,6 +22,8 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - name: Confirm WASM
+        run: test -s public/vibedrive_core.wasm
       - run: npm run build
       - name: SPA fallback
         run: cp dist/index.html dist/404.html

@@ -27,6 +27,8 @@ export type Scene = {
 export type SpeedUnit = "kmh" | "mph";
 export type ThemePref = "dark" | "light" | "auto";
 export type GpsStatus = "idle" | "waiting" | "live" | "denied" | "unavailable";
+export type TeslaLink = "off" | "tessie" | "custom" | "demo";
+export type TeslaStatus = "idle" | "connecting" | "live" | "error";
 
 export type MusicTrack = {
   id: string;

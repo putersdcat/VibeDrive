@@ -10,8 +10,15 @@ export function PrivacyPage() {
           never leave the device. There is no analytics pixel and no third-party map tile call.
         </p>
         <p>
+          Tesla pairing (Tessie access token, VIN, custom WebSocket URL) is stored only in this browser's
+          localStorage. VibeDrive never uploads those values. Official Tesla Fleet Telemetry is a vehicle-to-your-server
+          stream; this static cabin cannot terminate it, which is why Tessie, a URL you host, GPS, or the local demo
+          exist.
+        </p>
+        <p>
           Sign-in (Google or X) is optional and only identifies you so cabin settings can follow the account. Engine
-          audio and lo-fi are synthesized locally with the Web Audio API — no audio files are downloaded from a CDN.
+          audio and lo-fi are synthesized locally with the Web Audio API — no audio files are downloaded from a CDN. The
+          road is a WebGL2 shader plus a small Rust WASM particle core that runs entirely on-device.
         </p>
         <p>This is an original recreation of the GPS-cabin-HUD idea, not affiliated with dribe.app.</p>
       </div>

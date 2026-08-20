@@ -6,7 +6,8 @@ export function Throttle() {
   const throttle = useDrive((s) => s.throttle);
   const brake = useDrive((s) => s.brake);
   const pinSpeed = useDrive((s) => s.pinSpeed);
-  if (pinSpeed) return null;
+  const source = useDrive((s) => s.source);
+  if (pinSpeed || source === "tesla") return null;
 
   const bind = (which: "throttle" | "brake") => ({
     onPointerDown: (e: React.PointerEvent) => {

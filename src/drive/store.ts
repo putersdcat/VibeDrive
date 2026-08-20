@@ -2,9 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_SCENE_ID, TRACKS, sceneById } from "./scenes";
 import { autoGearForSpeed, rpmFromSpeed } from "./gearbox";
-import type { GpsStatus, SpeedUnit, ThemePref } from "./types";
+import type { GpsStatus, SpeedUnit, TeslaLink, TeslaStatus, ThemePref } from "./types";
 
-const LS_KEY = "vibedrive:v1";
+const LS_KEY = "vibedrive:v2";
+
+export type CabinSource = "sim" | "gps" | "tesla" | "pin";
 
 type DriveState = {
   booted: boolean;
@@ -26,6 +28,15 @@ type DriveState = {
   gpsStatus: GpsStatus;
   gpsSpeedMps: number;
   simSpeedMps: number;
+  teslaSpeedMps: number;
+  teslaLink: TeslaLink;
+  teslaStatus: TeslaStatus;
+  teslaError: string | null;
+  teslaVin: string;
+  teslaToken: string;
+  teslaWsUrl: string;
+  teslaUnit: "mph" | "kmh";
+  source: CabinSource;
   speedMps: number;
   accelMs2: number;
   load: number;
@@ -37,6 +48,7 @@ type DriveState = {
   simulate: boolean;
   trackIndex: number;
   musicOn: boolean;
+  fps: number;
   setBooted: (v: boolean) => void;
   startSession: () => void;
   setScene: (id: string) => void;
@@ -58,6 +70,14 @@ type DriveState = {
   setPinnedKmh: (v: number) => void;
   setSimulate: (v: boolean) => void;
   setGps: (status: GpsStatus, speedMps: number | null) => void;
+  setTeslaLink: (v: TeslaLink) => void;
+  setTeslaVin: (v: string) => void;
+  setTeslaToken: (v: string) => void;
+  setTeslaWsUrl: (v: string) => void;
+  setTeslaUnit: (v: "mph" | "kmh") => void;
+  setTesla: (status: TeslaStatus, error: string | null) => void;
+  setTeslaSpeed: (mps: number) => void;
+  setFps: (v: number) => void;
   nextTrack: (delta: number) => void;
   setMusicOn: (v: boolean) => void;
   tick: (dt: number) => void;
@@ -85,6 +105,15 @@ export const useDrive = create<DriveState>()(
       gpsStatus: "idle",
       gpsSpeedMps: 0,
       simSpeedMps: 0,
+      teslaSpeedMps: 0,
+      teslaLink: "off",
+      teslaStatus: "idle",
+      teslaError: null,
+      teslaVin: "",
+      teslaToken: "",
+      teslaWsUrl: "",
+      teslaUnit: "mph",
+      source: "sim",
       speedMps: 0,
       accelMs2: 0,
       load: 0,
@@ -96,6 +125,7 @@ export const useDrive = create<DriveState>()(
       simulate: true,
       trackIndex: 0,
       musicOn: false,
+      fps: 0,
       setBooted: (v) => set({ booted: v }),
       startSession: () => set({ started: true }),
       setScene: (id) => {
@@ -133,11 +163,16 @@ export const useDrive = create<DriveState>()(
       setPinSpeed: (pinSpeed) => set({ pinSpeed }),
       setPinnedKmh: (pinnedKmh) => set({ pinnedKmh }),
       setSimulate: (simulate) => set({ simulate }),
-      setGps: (gpsStatus, speedMps) =>
-        set({
-          gpsStatus,
-          gpsSpeedMps: speedMps ?? 0,
-        }),
+      setGps: (gpsStatus, speedMps) => set({ gpsStatus, gpsSpeedMps: speedMps ?? 0 }),
+      setTeslaLink: (teslaLink) => set({ teslaLink }),
+      setTeslaVin: (teslaVin) => set({ teslaVin }),
+      setTeslaToken: (teslaToken) => set({ teslaToken }),
+      setTeslaWsUrl: (teslaWsUrl) => set({ teslaWsUrl }),
+      setTeslaUnit: (teslaUnit) => set({ teslaUnit }),
+      setTesla: (teslaStatus, teslaError) => set({ teslaStatus, teslaError }),
+      setTeslaSpeed: (teslaSpeedMps) =>
+        set({ teslaSpeedMps, teslaStatus: "live", teslaError: null }),
+      setFps: (fps) => set({ fps }),
       nextTrack: (delta) =>
         set((s) => ({
           trackIndex: (s.trackIndex + delta + TRACKS.length) % TRACKS.length,
@@ -146,20 +181,30 @@ export const useDrive = create<DriveState>()(
       tick: (dt) => {
         const s = get();
         const scene = sceneById(s.sceneId);
+        const teslaLive = s.teslaStatus === "live" && s.teslaLink !== "off";
         const liveGps = s.gpsStatus === "live" && s.gpsSpeedMps > 0.6 && !s.simulate;
         let next = s.simSpeedMps;
         let load = 0;
+        let source: CabinSource = "sim";
 
         if (s.pinSpeed) {
+          source = "pin";
           const target = s.pinnedKmh / 3.6;
           const delta = target - next;
           next += delta * Math.min(1, dt * 1.8);
           load = Math.min(1, Math.abs(delta) / 12 + 0.12);
+        } else if (teslaLive) {
+          source = "tesla";
+          const target = s.teslaSpeedMps;
+          const delta = target - next;
+          next += delta * Math.min(1, dt * 6);
+          load = Math.min(1, Math.max(0.08, Math.abs(delta) / 6 + target / 70));
         } else if (liveGps) {
+          source = "gps";
           next = s.gpsSpeedMps;
           load = Math.min(1, Math.max(0, (next - s.speedMps) / 8 + 0.15));
         } else {
-          const max = 62; // ~223 km/h
+          const max = 62;
           if (s.throttle) {
             const pull = 9.5 - next * 0.08;
             next += Math.max(1.6, pull) * dt;
@@ -194,6 +239,7 @@ export const useDrive = create<DriveState>()(
           load,
           rpm,
           gear,
+          source,
           shiftFlash: Math.max(0, s.shiftFlash - dt),
         });
       },
@@ -213,6 +259,11 @@ export const useDrive = create<DriveState>()(
         pinnedKmh: s.pinnedKmh,
         trackIndex: s.trackIndex,
         dockOpen: s.dockOpen,
+        teslaLink: s.teslaLink,
+        teslaVin: s.teslaVin,
+        teslaToken: s.teslaToken,
+        teslaWsUrl: s.teslaWsUrl,
+        teslaUnit: s.teslaUnit,
       }),
     },
   ),

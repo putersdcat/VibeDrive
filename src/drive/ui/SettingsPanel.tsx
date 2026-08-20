@@ -1,5 +1,7 @@
 import { X } from "lucide-react";
+import { teslaStream } from "../telemetry";
 import { useDrive } from "../store";
+import type { TeslaLink } from "../types";
 
 function SliderRow({
   label,
@@ -29,6 +31,13 @@ function SliderRow({
   );
 }
 
+const TESLA_LINKS: { id: TeslaLink; label: string }[] = [
+  { id: "off", label: "Off" },
+  { id: "tessie", label: "Tessie" },
+  { id: "custom", label: "Custom" },
+  { id: "demo", label: "Demo" },
+];
+
 export function SettingsPanel() {
   const open = useDrive((s) => s.settingsOpen);
   const setSettingsOpen = useDrive((s) => s.setSettingsOpen);
@@ -50,8 +59,29 @@ export function SettingsPanel() {
   const setPinSpeed = useDrive((s) => s.setPinSpeed);
   const pinnedKmh = useDrive((s) => s.pinnedKmh);
   const setPinnedKmh = useDrive((s) => s.setPinnedKmh);
+  const teslaLink = useDrive((s) => s.teslaLink);
+  const setTeslaLink = useDrive((s) => s.setTeslaLink);
+  const teslaVin = useDrive((s) => s.teslaVin);
+  const setTeslaVin = useDrive((s) => s.setTeslaVin);
+  const teslaToken = useDrive((s) => s.teslaToken);
+  const setTeslaToken = useDrive((s) => s.setTeslaToken);
+  const teslaWsUrl = useDrive((s) => s.teslaWsUrl);
+  const setTeslaWsUrl = useDrive((s) => s.setTeslaWsUrl);
+  const teslaUnit = useDrive((s) => s.teslaUnit);
+  const setTeslaUnit = useDrive((s) => s.setTeslaUnit);
+  const teslaStatus = useDrive((s) => s.teslaStatus);
+  const teslaError = useDrive((s) => s.teslaError);
+  const setTesla = useDrive((s) => s.setTesla);
 
   if (!open) return null;
+
+  const pickLink = (id: TeslaLink) => {
+    setTeslaLink(id);
+    if (id === "off") {
+      teslaStream.stop();
+      setTesla("idle", null);
+    }
+  };
 
   return (
     <div className="vd-modal" role="dialog" aria-modal aria-labelledby="vd-settings-title">
@@ -118,6 +148,106 @@ export function SettingsPanel() {
         </section>
 
         <section className="vd-group">
+          <h3>Tesla telemetry</h3>
+          <p className="vd-hint">
+            Official Fleet Telemetry lands on a server you own — a static demo cannot terminate it. Use Tessie, a
+            custom <code>wss://</code> forwarder, GPS with the phone in the car, or the cabin demo.
+          </p>
+          <div className="vd-row">
+            <span>Source</span>
+            <div className="vd-pills">
+              {TESLA_LINKS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={teslaLink === opt.id ? "is-on" : undefined}
+                  onClick={() => pickLink(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {teslaLink === "tessie" ? (
+            <>
+              <label className="vd-field">
+                <span>VIN</span>
+                <input
+                  value={teslaVin}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="5YJ…"
+                  onChange={(e) => setTeslaVin(e.target.value.toUpperCase())}
+                />
+              </label>
+              <label className="vd-field">
+                <span>Tessie access token</span>
+                <input
+                  type="password"
+                  value={teslaToken}
+                  autoComplete="off"
+                  placeholder="stays in this browser"
+                  onChange={(e) => setTeslaToken(e.target.value)}
+                />
+              </label>
+            </>
+          ) : null}
+          {teslaLink === "custom" ? (
+            <>
+              <label className="vd-field">
+                <span>WebSocket URL</span>
+                <input
+                  value={teslaWsUrl}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="wss://your-forwarder/speed"
+                  onChange={(e) => setTeslaWsUrl(e.target.value)}
+                />
+              </label>
+              <div className="vd-row">
+                <span>Stream unit</span>
+                <div className="vd-pills">
+                  <button type="button" className={teslaUnit === "mph" ? "is-on" : undefined} onClick={() => setTeslaUnit("mph")}>
+                    mph
+                  </button>
+                  <button type="button" className={teslaUnit === "kmh" ? "is-on" : undefined} onClick={() => setTeslaUnit("kmh")}>
+                    km/h
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+          {teslaLink === "demo" ? (
+            <p className="vd-hint">A Tesla-shaped speed wave generated in this tab. No account, no car.</p>
+          ) : null}
+          {teslaLink !== "off" ? (
+            <div className="vd-row">
+              <span className="vd-tesla-status">
+                {teslaStatus}
+                {teslaError ? ` · ${teslaError}` : teslaStatus === "live" ? " · VehicleSpeed" : ""}
+              </span>
+              <div className="vd-pills">
+                {teslaStatus === "live" || teslaStatus === "connecting" ? (
+                  <button
+                    type="button"
+                    className="vd-action is-ghost"
+                    onClick={() => {
+                      teslaStream.stop();
+                      setTesla("idle", null);
+                    }}
+                  >
+                    Stop
+                  </button>
+                ) : null}
+                <button type="button" className="vd-action" onClick={() => teslaStream.connect()}>
+                  {teslaLink === "demo" ? "Start demo" : teslaStatus === "live" ? "Reconnect" : "Connect"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="vd-group">
           <h3>Display</h3>
           <div className="vd-row">
             <span>Theme</span>
@@ -156,7 +286,7 @@ export function SettingsPanel() {
         </section>
 
         <p className="vd-legal">
-          GPS stays in your browser. Nothing is uploaded.{" "}
+          GPS, VIN, and tokens stay in this browser. Nothing is uploaded.{" "}
           <a href={`${import.meta.env.BASE_URL}privacy`}>Privacy</a>
         </p>
       </div>

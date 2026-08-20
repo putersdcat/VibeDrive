@@ -12,8 +12,10 @@ export function Hud() {
   const isManual = useDrive((s) => s.isManual);
   const gear = useDrive((s) => s.gear);
   const setManual = useDrive((s) => s.setManual);
-  const gpsStatus = useDrive((s) => s.gpsStatus);
-  const simulate = useDrive((s) => s.simulate);
+  const source = useDrive((s) => s.source);
+  const teslaStatus = useDrive((s) => s.teslaStatus);
+  const teslaError = useDrive((s) => s.teslaError);
+  const fps = useDrive((s) => s.fps);
   const throttle = useDrive((s) => s.throttle);
 
   if (hudHidden) return null;
@@ -21,7 +23,21 @@ export function Hud() {
   const speed = displaySpeed(speedMps, unit);
   const fill = Math.min(1, rpm / scene.redline);
   const redlineStart = 0.82;
-  const live = gpsStatus === "live" && !simulate && speedMps > 0.6;
+
+  const notice =
+    teslaStatus === "connecting"
+      ? "Tesla connecting"
+      : teslaStatus === "error"
+        ? teslaError || "Tesla stream error"
+        : source === "tesla"
+          ? "Tesla telemetry live"
+          : source === "gps"
+            ? "GPS live"
+            : source === "pin"
+              ? "Pinned speed"
+              : throttle
+                ? "Simulated throttle"
+                : "Throttle · GPS · Tesla";
 
   return (
     <>
@@ -52,9 +68,7 @@ export function Hud() {
           </div>
           <div>
             <dt>Revs</dt>
-            <dd>
-              {Math.round(rpm).toLocaleString()} {scene.voice === "ev" || scene.voice === "space" ? "rpm" : "rpm"}
-            </dd>
+            <dd>{Math.round(rpm).toLocaleString()} rpm</dd>
           </div>
           <div>
             <dt>Acceleration</dt>
@@ -99,15 +113,8 @@ export function Hud() {
       </div>
 
       <p className="vd-notice">
-        {live
-          ? "GPS live"
-          : gpsStatus === "denied"
-            ? "GPS denied — using sim"
-            : gpsStatus === "waiting"
-              ? "Waiting for GPS"
-              : throttle
-                ? "Simulated throttle"
-                : "Hold throttle or enable GPS"}
+        {notice}
+        {fps > 0 ? ` · ${Math.round(fps)} fps` : ""}
       </p>
     </>
   );
