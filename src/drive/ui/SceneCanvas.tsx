@@ -85,14 +85,14 @@ export function SceneCanvas() {
         travel = 0;
       }
       travel += Math.max(0, st.speedMps) * dt;
-      const cycle = 52;
+      const cycle = 280;
       const u = (travel / cycle) % 1;
-      const fade = Math.max(0, (u - 0.82) / 0.18);
-      const pan = 50 + Math.sin(travel * 0.014) * 2.1;
+      const fade = Math.max(0, (u - 0.9) / 0.1);
+      const pan = 50 + Math.sin(travel * 0.006) * 1.6;
       const skyA = skyARef.current;
       const skyB = skyBRef.current;
       if (skyA && skyB) {
-        skyA.style.transform = `scale(${(1 + u * 0.145).toFixed(4)})`;
+        skyA.style.transform = `scale(${(1 + u * 0.05).toFixed(4)})`;
         skyA.style.opacity = fade > 0 ? String(1 - fade) : "1";
         skyA.style.objectPosition = `${pan.toFixed(2)}% 100%`;
         skyB.style.transform = "scale(1)";

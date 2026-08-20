@@ -8,7 +8,8 @@ const PRODUCE: Record<0 | 1 | 2, [string, string, string]> = {
   2: ["hotdog-0", "hotdog-1", "hotdog-2"],
 };
 const PALM_NAMES = ["palm-0", "palm-1", "palm-2"] as const;
-const SPRITE_NAMES = [...PRODUCE[0], ...PRODUCE[1], ...PRODUCE[2], "gator", ...PALM_NAMES];
+const CLOUD_NAMES = ["cloud-0", "cloud-1", "cloud-2"] as const;
+const SPRITE_NAMES = [...PRODUCE[0], ...PRODUCE[1], ...PRODUCE[2], "gator", ...PALM_NAMES, ...CLOUD_NAMES];
 const MAX_DROPS = 46;
 const GATOR_LEN = 1.72;
 const PALM_H = 2.35;
@@ -45,6 +46,14 @@ type Palm = {
   lean: number;
 };
 
+type Cloud = {
+  x: number;
+  y: number;
+  s: number;
+  variant: 0 | 1 | 2;
+  drift: number;
+};
+
 const sprites: Record<string, HTMLImageElement> = {};
 
 export function loadTributeSprites(base: string) {
@@ -71,6 +80,7 @@ export class TributeFx {
   private gators: Gator[] = [];
   private drops: Produce[] = [];
   private palms: Palm[] = [];
+  private clouds: Cloud[] = [];
   private spawn = 0;
   private rain = 2.5;
   private idle = 4;
@@ -90,6 +100,7 @@ export class TributeFx {
     ];
     this.drops = [];
     this.palms = [];
+    this.clouds = [];
     for (let i = 0; i < 12; i++) {
       const side = i % 2 === 0 ? -1 : 1;
       this.palms.push({
@@ -97,6 +108,15 @@ export class TributeFx {
         z: 3.2 + ((i * 2.7) % WORLD_LEN),
         variant: (i % 3) as 0 | 1 | 2,
         lean: side * (0.04 + (i % 4) * 0.03),
+      });
+    }
+    for (let i = 0; i < 7; i++) {
+      this.clouds.push({
+        x: (i * 0.23 + 0.04) % 1.4 - 0.15,
+        y: 0.07 + (i % 4) * 0.055,
+        s: 0.45 + (i % 3) * 0.28,
+        variant: (i % 3) as 0 | 1 | 2,
+        drift: 0.012 + (i % 5) * 0.006,
       });
     }
     this.spawn = 0;
@@ -199,6 +219,10 @@ export class TributeFx {
         p.variant = Math.floor(Math.random() * 3) as 0 | 1 | 2;
       }
     }
+    for (const c of this.clouds) {
+      c.x -= (0.006 + Math.max(0, speed) * 0.0011 * c.drift) * dt;
+      if (c.x < -0.35) c.x += 1.55;
+    }
 
     this.idle += dt;
     if (!event && this.idle > 16 && speed > 3) {
@@ -214,6 +238,8 @@ export class TributeFx {
     if (kind !== "florida") return;
     ctx.save();
     ctx.translate(Math.sin(t * 63) * shake * 10, bump * 16 + Math.sin(t * 81) * shake * 6);
+
+    for (const c of this.clouds) drawCloud(ctx, w, h, c);
 
     type Sprite = { z: number; draw: () => void };
     const queue: Sprite[] = [];
@@ -255,16 +281,27 @@ function drawGator(ctx: CanvasRenderingContext2D, w: number, h: number, g: Gator
   const p = project(g.xw, g.z, w, h);
   const dw = GATOR_LEN * p.scale * w;
   const ratio = img.naturalHeight / Math.max(1, img.naturalWidth);
-  const dh = dw * ratio * 0.82;
+  const dh = Math.max(4, dw * ratio * 0.52);
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.scale(g.facing, 1 - g.squash * 0.7);
   ctx.globalAlpha = 1 - g.squash * 0.4;
-  ctx.fillStyle = "rgba(18, 14, 8, 0.32)";
+  ctx.fillStyle = "rgba(16, 12, 8, 0.38)";
   ctx.beginPath();
-  ctx.ellipse(dw * 0.04, Math.max(1.5, dh * 0.12), dw * 0.38, Math.max(1.8, dw * 0.028), 0, 0, Math.PI * 2);
+  ctx.ellipse(dw * 0.02, 0, dw * 0.4, Math.max(1.4, dw * 0.024), 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.drawImage(img, -dw / 2, -dh + dh * 0.08, dw, dh);
+  ctx.drawImage(img, -dw / 2, -dh * 0.72, dw, dh);
+  ctx.restore();
+}
+
+function drawCloud(ctx: CanvasRenderingContext2D, w: number, h: number, c: Cloud) {
+  const img = spr(CLOUD_NAMES[c.variant]!) ?? spr("cloud-0");
+  if (!img) return;
+  const dw = w * 0.34 * c.s;
+  const dh = dw * (img.naturalHeight / Math.max(1, img.naturalWidth));
+  ctx.save();
+  ctx.globalAlpha = 0.55 + c.s * 0.25;
+  ctx.drawImage(img, c.x * w - dw * 0.3, c.y * h - dh * 0.35, dw, dh);
   ctx.restore();
 }
 
