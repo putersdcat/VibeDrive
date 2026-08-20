@@ -108,11 +108,10 @@ void main(){
         if (abs(ax - 0.74) < 0.022 && dash < 0.38 && uKind != 5 && uKind != 6) {
           col = vec3(0.78, 0.80, 0.82);
         }
-        if (uKind == 4 || uKind == 8) {
+        if (uKind == 4) {
           vec2 ru = vec2(uv.x, mix(0.40, 0.22, clamp(sy * 3.4, 0.0, 1.0)));
           vec3 refl = uHasSky > 0.5 ? texture(uSky, ru).rgb : uSky1;
-          float wet = uKind == 4 ? 0.42 : 0.18;
-          col = mix(col, refl, wet * (1.0 - smoothstep(10.0, 26.0, z)));
+          col = mix(col, refl, 0.42 * (1.0 - smoothstep(10.0, 26.0, z)));
         }
         col += sunC * 0.12 * exp(-abs(xw) * 0.35) * (1.0 - smoothstep(8.0, 22.0, z));
         col += uAccent * uLoad * 0.05;
