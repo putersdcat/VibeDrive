@@ -49,7 +49,7 @@ export function SceneDock() {
     <aside className="vd-dock">
       <div className="vd-dock-head">
         <span>Scenes</span>
-        <span className="vd-dock-plan">8 open · no paywall</span>
+        <span className="vd-dock-plan">10 open · garage tributes</span>
       </div>
       <div className="vd-scene-grid">
         {SCENES.map((scene) => {

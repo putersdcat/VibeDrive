@@ -64,4 +64,6 @@ export const KIND_INDEX: Record<string, number> = {
   "clean-ev": 5,
   space: 6,
   lantern: 7,
+  florida: 8,
+  xing: 9,
 };

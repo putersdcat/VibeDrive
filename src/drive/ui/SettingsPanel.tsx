@@ -72,6 +72,8 @@ export function SettingsPanel() {
   const teslaStatus = useDrive((s) => s.teslaStatus);
   const teslaError = useDrive((s) => s.teslaError);
   const setTesla = useDrive((s) => s.setTesla);
+  const hypeOn = useDrive((s) => s.hypeOn);
+  const setHypeOn = useDrive((s) => s.setHypeOn);
 
   if (!open) return null;
 
@@ -245,6 +247,25 @@ export function SettingsPanel() {
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="vd-group">
+          <h3>Cabin hype</h3>
+          <p className="vd-hint">
+            Original shout-outs on Citrus Gator and Xing Ghost. Not anyone's real voice — a cabin commentator.
+          </p>
+          <div className="vd-row">
+            <span>Callouts</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={hypeOn}
+              className={hypeOn ? "vd-switch is-on" : "vd-switch"}
+              onClick={() => setHypeOn(!hypeOn)}
+            >
+              <span />
+            </button>
+          </div>
         </section>
 
         <section className="vd-group">

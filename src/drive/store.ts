@@ -48,6 +48,7 @@ type DriveState = {
   simulate: boolean;
   trackIndex: number;
   musicOn: boolean;
+  hypeOn: boolean;
   fps: number;
   setBooted: (v: boolean) => void;
   startSession: () => void;
@@ -80,6 +81,7 @@ type DriveState = {
   setFps: (v: number) => void;
   nextTrack: (delta: number) => void;
   setMusicOn: (v: boolean) => void;
+  setHypeOn: (v: boolean) => void;
   tick: (dt: number) => void;
 };
 
@@ -125,6 +127,7 @@ export const useDrive = create<DriveState>()(
       simulate: true,
       trackIndex: 0,
       musicOn: false,
+      hypeOn: true,
       fps: 0,
       setBooted: (v) => set({ booted: v }),
       startSession: () => set({ started: true }),
@@ -178,6 +181,7 @@ export const useDrive = create<DriveState>()(
           trackIndex: (s.trackIndex + delta + TRACKS.length) % TRACKS.length,
         })),
       setMusicOn: (musicOn) => set({ musicOn }),
+      setHypeOn: (hypeOn) => set({ hypeOn }),
       tick: (dt) => {
         const s = get();
         const scene = sceneById(s.sceneId);
@@ -264,6 +268,7 @@ export const useDrive = create<DriveState>()(
         teslaToken: s.teslaToken,
         teslaWsUrl: s.teslaWsUrl,
         teslaUnit: s.teslaUnit,
+        hypeOn: s.hypeOn,
       }),
     },
   ),

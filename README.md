@@ -8,7 +8,8 @@ This is an original recreation of the *GPS cabin HUD* idea popularized by [dribe
 
 ## Cabin
 
-- Eight scenes (Forge V8, Signal Bloom, White Pass, Copper Wash, Tape Rain, Inverter, Halo Drift, Paper Lantern)
+- Ten scenes, including Tesla-garage tributes **Citrus Gator** (Florida sun, gators, banana / cucumber / hot-dog rain) and **Xing Ghost** (grade crossing + cyan vision boxes)
+- Original cabin-hype shout-outs (`Jesus!`, `Oh my!`, …) — synthesized, **not** a real person's voice
 - Synthesized engine voices (V8, I6, EV inverter, muffled rain, space, synth)
 - Auto / manual gearbox on scenes that support it
 - Procedural lo-fi cabin radio
@@ -24,7 +25,7 @@ This is an original recreation of the *GPS cabin HUD* idea popularized by [dribe
 | S / ↓ | Brake |
 | A / [ | Downshift |
 | Z / Q / ] | Upshift |
-| 1–8 | Scenes |
+| 1–9, 0 | Scenes |
 | M | Mute |
 | D | Toggle scene dock |
 
@@ -41,21 +42,15 @@ Viable static-host paths:
 | Source | What it is | Token location |
 | --- | --- | --- |
 | **Tessie** | Browser WebSocket `wss://streaming.tessie.com/{VIN}?access_token=…` | localStorage |
-| **Custom `wss://`** | Your TeslaMate / Fleet Telemetry forwarder that emits JSON with `VehicleSpeed` / `drive_state.speed` | localStorage |
+| **Custom `wss://`** | Your TeslaMate / Fleet Telemetry forwarder | localStorage |
 | **Demo** | Local Tesla-shaped speed wave, no account | none |
 | **GPS** | Phone in the car, `Geolocation.coords.speed` | none |
 
 VIN and Tessie token never leave this tab. Open **Settings → Tesla telemetry**.
 
-A custom forwarder can send either JSON (`{ "VehicleSpeed": 41.2 }` or Fleet-style `{ "data": [{ "key": "VehicleSpeed", "value": { "doubleValue": 41.2 } }] }`) or a raw number. Tesla/Tessie streams are mph; the custom URL has a unit toggle.
-
-### GPS
-
-Works parked-in-car with the phone on the dash. GitHub Pages is HTTPS, so the browser will grant geolocation. Turn **Prefer simulation** off.
-
 ## High FPS road
 
-The cabin prefers **WebGL2**: a fullscreen warp shader for sky/road/buildings plus a **Rust `cdylib`** (~8 KB) that ticks 2048 particles (snow, rain, dust, lanterns, stars) through a C ABI. No allocator in the tick path. If WebGL2 is missing, Canvas 2D takes over.
+The cabin prefers **WebGL2**: a fullscreen warp shader plus a **Rust `cdylib`** (~8 KB) that ticks 2048 particles. If WebGL2 is missing, Canvas 2D takes over.
 
 Rebuild the WASM (optional — `public/vibedrive_core.wasm` is already committed):
 
@@ -68,7 +63,7 @@ cp target/wasm32-unknown-unknown/release/vibedrive_core.wasm ../public/
 
 ## Privacy
 
-GPS, VIN, and tokens stay in the browser. Coordinates are never uploaded. Engine and music are synthesized with the Web Audio API — no audio CDN.
+GPS, VIN, and tokens stay in the browser. Cabin hype MP3s are original synthesized lines. Engine and music are synthesized with the Web Audio API.
 
 ## Develop
 

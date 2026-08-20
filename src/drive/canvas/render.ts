@@ -222,6 +222,31 @@ export function renderScene(
     drawBuildings(ctx, w, h, vpY, dist, false);
     drawLanterns(ctx, w, h, vpY, dist);
   }
+  if (scene.kind === "florida") {
+    ctx.beginPath();
+    ctx.arc(w * 0.78, vpY * 0.42, 38, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffe27a";
+    ctx.fill();
+    ctx.fillStyle = "#1a4a22";
+    for (let i = 0; i < 6; i++) {
+      const x = w * (0.08 + i * 0.15);
+      ctx.fillRect(x, vpY - 46, 4, 46);
+      ctx.beginPath();
+      ctx.ellipse(x + 2, vpY - 52, 18, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = "rgba(70, 160, 70, 0.35)";
+    ctx.fillRect(0, vpY, w, 18);
+  }
+  if (scene.kind === "xing") {
+    ctx.fillStyle = Math.floor(st.t * 4) % 2 === 0 ? "#ff3030" : "#f4f4f4";
+    ctx.beginPath();
+    ctx.arc(w * 0.22, vpY - 8, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(62,224,255,0.45)";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(w * 0.42, vpY + 8, 36, 22);
+  }
 
   const roadColor =
     scene.kind === "snow"
@@ -230,7 +255,9 @@ export function renderScene(
         ? "#6b4a28"
         : scene.kind === "space"
           ? "#101428"
-          : "#1a1c22";
+          : scene.kind === "florida"
+            ? "#3a3c42"
+            : "#1a1c22";
   roadTrapezoid(ctx, w, h, vpY, roadColor);
   if (scene.kind !== "space") {
     ctx.save();

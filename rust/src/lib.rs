@@ -45,7 +45,7 @@ pub extern "C" fn vd_particles_count() -> u32 {
     unsafe { COUNT }
 }
 
-/// kind: 0 night, 1 neon, 2 snow, 3 desert, 4 rain, 5 ev, 6 space, 7 lantern
+/// kind: 0 night .. 7 lantern, 8 florida, 9 xing
 #[no_mangle]
 pub extern "C" fn vd_tick(dt: f32, speed_mps: f32, kind: u32, time: f32) -> u32 {
     unsafe {
@@ -80,6 +80,15 @@ pub extern "C" fn vd_tick(dt: f32, speed_mps: f32, kind: u32, time: f32) -> u32 
                 6 => {
                     // stars: slow drift
                     PARTS[o] += dt * 0.02 * PARTS[o + 2];
+                }
+                8 => {
+                    // produce rain
+                    PARTS[o + 1] += dt * (0.55 + rush) * PARTS[o + 2];
+                    PARTS[o] += (time * 0.4 + i as f32).sin() * dt * 0.05;
+                }
+                9 => {
+                    // crossing sparks
+                    PARTS[o + 1] += dt * rush * 1.6 * PARTS[o + 2];
                 }
                 _ => {
                     PARTS[o + 1] += dt * rush * PARTS[o + 2];

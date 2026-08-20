@@ -8,7 +8,9 @@ export type SceneKind =
   | "rain"
   | "clean-ev"
   | "space"
-  | "lantern";
+  | "lantern"
+  | "florida"
+  | "xing";
 
 export type Scene = {
   id: string;

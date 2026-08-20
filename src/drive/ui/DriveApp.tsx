@@ -1,8 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { sceneById, TRACKS } from "../scenes";
+import { SCENES, sceneById, TRACKS } from "../scenes";
 import { driveEngine } from "../engine";
 import { lofiPlayer } from "../music";
 import { teslaStream } from "../telemetry";
+import { cabinHype } from "../callouts";
 import { useDrive } from "../store";
 import { HeaderBar } from "./HeaderBar";
 import { Hud } from "./Hud";
@@ -80,16 +81,6 @@ function useTesla() {
   }, [started, teslaLink]);
 }
 
-const SCENE_HOTKEYS = [
-  "forge-v8",
-  "signal-bloom",
-  "white-pass",
-  "copper-wash",
-  "tape-rain",
-  "inverter",
-  "halo-drift",
-  "paper-lantern",
-] as const;
 
 function useKeys() {
   useEffect(() => {
@@ -105,9 +96,9 @@ function useKeys() {
       else if (e.code === "KeyZ" || e.code === "BracketRight" || e.code === "KeyQ") s.shift(1);
       else if (e.code === "KeyM") s.setMuted(!s.muted);
       else if (e.code === "KeyD") s.setDockOpen(!s.dockOpen);
-      else if (e.code >= "Digit1" && e.code <= "Digit8") {
-        const idx = Number(e.code.replace("Digit", "")) - 1;
-        const id = SCENE_HOTKEYS[idx];
+      else if (e.code.startsWith("Digit")) {
+        const idx = e.code === "Digit0" ? 9 : Number(e.code.replace("Digit", "")) - 1;
+        const id = SCENES[idx]?.id;
         if (id) s.setScene(id);
       }
     };
@@ -205,6 +196,8 @@ export function DriveApp({ account }: { account?: ReactNode }) {
       useDrive.getState().setMusicOn(true);
       useDrive.getState().setMusicOpen(true);
     }
+    cabinHype.attach(import.meta.env.BASE_URL || "/");
+    cabinHype.prime();
     startSession();
   };
 

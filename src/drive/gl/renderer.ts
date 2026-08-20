@@ -61,6 +61,8 @@ void main(){
       vec3 asphalt = uKind == 2 ? vec3(0.72, 0.78, 0.84)
                    : uKind == 3 ? vec3(0.38, 0.26, 0.14)
                    : uKind == 6 ? vec3(0.07, 0.08, 0.16)
+                   : uKind == 8 ? vec3(0.22, 0.22, 0.24)
+                   : uKind == 9 ? vec3(0.08, 0.09, 0.12)
                    : vec3(0.09, 0.10, 0.13);
       col = mix(asphalt, asphalt * 1.25, persp);
       float dashPhase = fract((0.18 / max(z, 0.02)) - uTime * (0.35 + uSpeed * 0.12));
@@ -87,6 +89,29 @@ void main(){
     if (rain > 0.96) col += vec3(0.55, 0.65, 0.75);
   }
 
+  if (uKind == 8) {
+    vec2 sunp = vec2(0.78, 0.74);
+    col += vec3(1.0, 0.9, 0.35) * 0.7 * exp(-length((uv - sunp) * vec2(aspect, 1.0)) * 12.0);
+    if (uv.y > horizon) {
+      col = mix(col, vec3(0.35, 0.72, 0.38), 0.18);
+    }
+    float palm = 0.0;
+    for (int i = 0; i < 7; i++) {
+      float px = 0.08 + float(i) * 0.14;
+      float stem = smoothstep(0.012, 0.0, abs(uv.x - px)) * step(horizon, uv.y) * step(uv.y, horizon + 0.18);
+      palm += stem;
+    }
+    col = mix(col, vec3(0.08, 0.18, 0.1), clamp(palm, 0.0, 1.0) * 0.85);
+  }
+
+  if (uKind == 9) {
+    float rail = step(abs(uv.y - 0.36), 0.008);
+    col = mix(col, vec3(0.7, 0.72, 0.78), rail);
+    float blink = step(0.5, fract(uTime * 2.0));
+    col += vec3(1.0, 0.15, 0.12) * blink * exp(-length(uv - vec2(0.22, 0.40)) * 40.0);
+    col += vec3(1.0, 0.95, 0.95) * (1.0 - blink) * exp(-length(uv - vec2(0.78, 0.40)) * 40.0);
+  }
+
   float vig = smoothstep(1.15, 0.25, length((uv - vec2(0.5, 0.48)) * vec2(1.1, 1.0)));
   col *= mix(0.55, 1.0, vig);
   frag = vec4(col, 1.0);
@@ -107,7 +132,9 @@ void main(){
   float x = a.x * mix(0.08, 1.6, persp) / aspect;
   float y = mix(0.16, -1.0, persp);
   gl_Position = vec4(x, y, 0.0, 1.0);
-  gl_PointSize = mix(1.2, 7.5, persp) * a.z * (uRes.y / 720.0);
+  float ps = mix(1.2, 7.5, persp) * a.z * (uRes.y / 720.0);
+  if (uKind == 8) ps *= 2.4;
+  gl_PointSize = ps;
   vKind = a.w;
   vNear = persp;
 }
@@ -133,6 +160,13 @@ void main(){
   if (uKind == 2) c = vec3(0.95);
   if (uKind == 6) c = vec3(0.85, 0.93, 1.0);
   if (uKind == 7) c = mix(uAccent, vec3(1.0, 0.82, 0.90), 0.4);
+  if (uKind == 8) {
+    float k = mod(vKind, 3.0);
+    if (k < 1.0) c = vec3(0.98, 0.84, 0.16);
+    else if (k < 2.0) c = vec3(0.32, 0.72, 0.28);
+    else c = vec3(0.86, 0.28, 0.16);
+  }
+  if (uKind == 9) c = vec3(0.45, 0.92, 1.0);
   frag = vec4(c, mix(0.15, 0.85, vNear) * (1.0 - d));
 }
 `;

@@ -105,6 +105,32 @@ export const SCENES: Scene[] = [
     redline: 7600,
     sky: ["#1a0e18", "#4a1830"],
   },
+  {
+    id: "citrus-gator",
+    name: "Citrus Gator",
+    tagline: "Sunny I-95. Gators. It rains bananas.",
+    accent: "#f4c430",
+    kind: "florida",
+    voice: "ev",
+    hasMusic: false,
+    hasManual: false,
+    idleRpm: 0,
+    redline: 18000,
+    sky: ["#47b7ff", "#ffe58a"],
+  },
+  {
+    id: "xing-ghost",
+    name: "Xing Ghost",
+    tagline: "Grade crossing, cyan boxes, a sudden brake.",
+    accent: "#3ee0ff",
+    kind: "xing",
+    voice: "ev",
+    hasMusic: false,
+    hasManual: false,
+    idleRpm: 0,
+    redline: 16000,
+    sky: ["#070b14", "#173044"],
+  },
 ];
 
 export const DEFAULT_SCENE_ID = "forge-v8";
