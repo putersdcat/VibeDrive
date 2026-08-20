@@ -1,6 +1,8 @@
 export const GEAR_RATIOS = [3.82, 2.2, 1.52, 1.22, 1.02, 0.82];
 const FINAL_DRIVE = 3.42;
 const TIRE_CIRCUM_M = 2.05;
+/** Tesla-style single-speed reduction (Model 3/Y rear is ~9:1). */
+export const DIRECT_RATIO = 9.0;
 
 export function rpmFromSpeed(speedMps: number, gear: number, idleRpm: number, redline: number): number {
   if (speedMps < 0.4) return idleRpm;
@@ -8,6 +10,12 @@ export function rpmFromSpeed(speedMps: number, gear: number, idleRpm: number, re
   const wheelRps = speedMps / TIRE_CIRCUM_M;
   const rpm = wheelRps * 60 * ratio * FINAL_DRIVE;
   return Math.max(idleRpm, Math.min(redline + 400, rpm));
+}
+
+export function rpmDirectDrive(speedMps: number, idleRpm: number, redline: number): number {
+  if (speedMps < 0.15) return idleRpm;
+  const rpm = (speedMps / TIRE_CIRCUM_M) * 60 * DIRECT_RATIO;
+  return Math.max(idleRpm, Math.min(redline, rpm));
 }
 
 export function autoGearForSpeed(speedMps: number, current: number, rpm: number, redline: number, idleRpm: number): number {

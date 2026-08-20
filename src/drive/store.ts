@@ -2,10 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { detectTeslaBrowser } from "./car";
 import { DEFAULT_SCENE_ID, TRACKS, sceneById } from "./scenes";
-import { autoGearForSpeed, rpmFromSpeed } from "./gearbox";
+import { autoGearForSpeed, rpmDirectDrive, rpmFromSpeed } from "./gearbox";
 import type { GpsStatus, SpeedUnit, TeslaLink, TeslaStatus, ThemePref } from "./types";
 
-const LS_KEY = "vibedrive:v2";
+const LS_KEY = "vibedrive:v3";
 
 export type CabinSource = "sim" | "gps" | "tesla" | "pin";
 
@@ -235,11 +235,17 @@ export const useDrive = create<DriveState>()(
         }
 
         const accel = (next - s.speedMps) / Math.max(dt, 0.001);
-        let gear = s.gear;
-        let rpm = rpmFromSpeed(next, gear, scene.idleRpm, scene.redline);
-        if (!s.isManual || !scene.hasManual) {
-          gear = autoGearForSpeed(next, gear, rpm, scene.redline, scene.idleRpm);
+        let gear = 1;
+        let rpm: number;
+        if (scene.hasManual) {
+          gear = s.gear;
           rpm = rpmFromSpeed(next, gear, scene.idleRpm, scene.redline);
+          if (!s.isManual) {
+            gear = autoGearForSpeed(next, gear, rpm, scene.redline, scene.idleRpm);
+            rpm = rpmFromSpeed(next, gear, scene.idleRpm, scene.redline);
+          }
+        } else {
+          rpm = rpmDirectDrive(next, scene.idleRpm, scene.redline);
         }
         if (next < 0.35) {
           rpm = scene.idleRpm;
@@ -270,7 +276,6 @@ export const useDrive = create<DriveState>()(
         musicVolume: s.musicVolume,
         hudHidden: s.hudHidden,
         wheelRight: s.wheelRight,
-        isManual: s.isManual,
         pinnedKmh: s.pinnedKmh,
         trackIndex: s.trackIndex,
         dockOpen: s.dockOpen,
