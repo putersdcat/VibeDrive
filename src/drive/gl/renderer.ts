@@ -17,6 +17,9 @@ uniform vec3 uAccent;
 uniform vec3 uSky0;
 uniform vec3 uSky1;
 uniform int uKind;
+uniform sampler2D uSky;
+uniform float uHasSky;
+uniform float uScroll;
 out vec4 frag;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
@@ -27,166 +30,172 @@ float n2(vec2 p){
   return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
 }
 
+vec3 terrain(int k, float band){
+  if (k==2) return mix(vec3(0.86,0.90,0.93), vec3(0.72,0.80,0.86), band);
+  if (k==3) return mix(vec3(0.78,0.48,0.18), vec3(0.93,0.66,0.28), band);
+  if (k==8) return mix(vec3(0.22,0.50,0.18), vec3(0.40,0.62,0.16), band);
+  if (k==5) return mix(vec3(0.70,0.76,0.74), vec3(0.52,0.60,0.58), band);
+  if (k==6) return mix(vec3(0.05,0.05,0.14), vec3(0.12,0.08,0.24), band);
+  if (k==7) return mix(vec3(0.16,0.05,0.10), vec3(0.28,0.08,0.16), band);
+  if (k==1) return mix(vec3(0.05,0.02,0.10), vec3(0.12,0.04,0.16), band);
+  return mix(vec3(0.07,0.09,0.07), vec3(0.13,0.16,0.10), band);
+}
+
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   float aspect = uRes.x / max(uRes.y, 1.0);
-  uv.x += 0.0025 * uLoad * sin(uTime * 29.0);
-  float horizon = 0.58;
-
-  vec3 zenith = uSky0;
-  vec3 horCol = uSky1;
+  uv.x += 0.0018 * uLoad * sin(uTime * 31.0);
+  float horizon = 0.56;
   float skyT = clamp((uv.y - horizon) / max(1.0 - horizon, 0.001), 0.0, 1.0);
-  vec3 col = mix(horCol, zenith, pow(skyT, 0.72));
 
-  vec2 sun = vec2(0.18, 0.68);
-  vec3 sunC = mix(uAccent, vec3(1.0, 0.86, 0.55), 0.45);
-  if (uKind == 8) { sun = vec2(0.74, 0.71); sunC = vec3(1.00, 0.93, 0.52); }
-  else if (uKind == 3) { sun = vec2(0.80, 0.64); sunC = vec3(1.00, 0.74, 0.28); }
-  else if (uKind == 2) { sun = vec2(0.22, 0.70); sunC = vec3(0.96, 0.98, 1.00); }
-  else if (uKind == 7) { sun = vec2(0.82, 0.66); sunC = vec3(1.00, 0.52, 0.70); }
+  vec3 col = mix(uSky1, uSky0, pow(skyT, 0.72));
+  vec3 horCol = uSky1;
+  if (uHasSky > 0.5) {
+    vec2 suv = vec2(clamp(uv.x, 0.001, 0.999), mix(0.64, 1.0, pow(skyT, 0.68)));
+    col = texture(uSky, suv).rgb;
+    horCol = texture(uSky, vec2(0.5, 0.64)).rgb;
+  }
+
+  vec2 sun = vec2(0.18, 0.70);
+  vec3 sunC = mix(uAccent, vec3(1.0, 0.86, 0.55), 0.4);
+  if (uKind == 8) { sun = vec2(0.78, 0.72); sunC = vec3(1.00, 0.90, 0.45); }
+  else if (uKind == 3) { sun = vec2(0.82, 0.64); sunC = vec3(1.00, 0.72, 0.22); }
+  else if (uKind == 2) { sun = vec2(0.22, 0.72); sunC = vec3(0.95, 0.97, 1.00); }
+  else if (uKind == 5) { sun = vec2(0.50, 0.73); sunC = vec3(1.00, 0.94, 0.78); }
+  else if (uKind == 7) { sun = vec2(0.80, 0.66); sunC = vec3(1.00, 0.50, 0.68); }
   else if (uKind == 6) { sun = vec2(0.68, 0.74); sunC = uAccent; }
-  else if (uKind == 5) { sun = vec2(0.5, 0.72); sunC = mix(uAccent, vec3(1.0), 0.4); }
-  else if (uKind == 0 || uKind == 4) { sun = vec2(0.16, 0.66); sunC = vec3(1.00, 0.62, 0.28); }
+  else if (uKind == 0 || uKind == 4 || uKind == 9) { sun = vec2(0.16, 0.67); sunC = vec3(1.00, 0.62, 0.28); }
   float sd = length((uv - sun) * vec2(aspect, 1.0));
-  col += sunC * 0.65 * exp(-sd * 16.0);
-  col += sunC * 0.28 * exp(-sd * 5.5);
-  col += mix(uAccent, sunC, 0.5) * 0.55 * exp(-abs(uv.y - horizon) * 18.0);
+  col += sunC * 0.55 * exp(-sd * 22.0);
+  col += sunC * 0.22 * exp(-sd * 6.0);
+  if (uKind == 8 || uKind == 3 || uKind == 5) {
+    col += sunC * 0.12 * exp(-abs(uv.y - sun.y) * 40.0) * exp(-abs(uv.x - sun.x) * 1.6);
+  }
+  col += mix(uAccent, sunC, 0.5) * 0.28 * exp(-abs(uv.y - horizon) * 22.0);
 
-  if (uKind == 0 || uKind == 1 || uKind == 6 || uKind == 7 || uKind == 9) {
-    float sp = hash(floor(uv * vec2(110.0, 58.0)));
-    if (sp > 0.987) col += vec3(0.85, 0.92, 1.0) * (0.45 + 0.55 * n2(uv * 30.0 + uTime * 0.05));
-  }
-  if (uKind == 6) {
-    col += uAccent * 0.28 * n2(uv * 2.8 + vec2(uTime * 0.015, 0.2));
-    col += vec3(0.28, 0.10, 0.62) * 0.22 * n2(uv * 1.4 + 8.0);
+  if (uKind == 0 || uKind == 1 || uKind == 6 || uKind == 9) {
+    float sp = hash(floor(uv * vec2(140.0, 70.0)));
+    if (sp > 0.989) col += vec3(0.85, 0.92, 1.0) * (0.4 + 0.6 * n2(uv * 40.0 + uTime * 0.04));
   }
 
-  if (uv.y > horizon && uv.y < horizon + 0.18) {
-    float mx = uv.x * 6.0;
-    float ridge = 0.0;
-    if (uKind == 2) ridge = 0.11 + 0.07 * sin(mx * 1.3) + 0.035 * sin(mx * 3.4 + 1.1);
-    else if (uKind == 3) ridge = 0.055 + 0.04 * n2(vec2(uv.x * 5.0, 2.2));
-    else if (uKind == 8) ridge = 0.02 * n2(vec2(uv.x * 9.0, 1.0));
-    else if (uKind == 7) ridge = 0.06 + 0.03 * sin(mx * 2.0);
-    else if (uKind != 5 && uKind != 6) ridge = 0.04 + 0.03 * n2(vec2(uv.x * 7.0, 1.4));
-    if (uv.y < horizon + ridge) {
-      vec3 mcol = uKind == 2 ? vec3(0.76, 0.84, 0.90)
-                : uKind == 3 ? vec3(0.58, 0.30, 0.14)
-                : uKind == 8 ? vec3(0.18, 0.42, 0.22)
-                : uKind == 7 ? vec3(0.16, 0.05, 0.12)
-                : vec3(0.035, 0.04, 0.055);
-      col = mcol;
-    }
-  }
+  if (uHasSky < 0.5) horCol = col;
 
   if (uv.y < horizon) {
-    float sy = max(horizon - uv.y, 0.0007);
-    float z = 0.26 / sy;
-    float scroll = uTime * (6.5 + uSpeed * 16.0);
-    float xw = (uv.x - 0.5) * aspect * z * 1.18;
-    float band = fract(z * 0.18 + scroll * 0.01);
-
-    vec3 ground = mix(vec3(0.08, 0.10, 0.08), vec3(0.12, 0.15, 0.11), step(0.5, band));
-    if (uKind == 2) ground = mix(vec3(0.88, 0.92, 0.95), vec3(0.72, 0.80, 0.86), band);
-    else if (uKind == 3) ground = mix(vec3(0.78, 0.48, 0.18), vec3(0.92, 0.64, 0.28), step(0.5, band));
-    else if (uKind == 8) ground = mix(vec3(0.28, 0.52, 0.20), vec3(0.42, 0.60, 0.18), step(0.5, band));
-    else if (uKind == 5) ground = mix(vec3(0.74, 0.80, 0.78), vec3(0.58, 0.66, 0.64), band);
-    else if (uKind == 6) ground = mix(vec3(0.05, 0.05, 0.12), vec3(0.10, 0.08, 0.22), band);
-    else if (uKind == 7) ground = mix(vec3(0.16, 0.05, 0.10), vec3(0.26, 0.07, 0.14), band);
-    else if (uKind == 1) ground = mix(vec3(0.06, 0.03, 0.10), vec3(0.10, 0.04, 0.14), band);
-
-    if (uKind == 8 && xw < -2.55) {
-      ground = mix(vec3(0.10, 0.40, 0.58), vec3(0.18, 0.62, 0.72), 0.5 + 0.5 * sin(xw * 1.8 + uTime));
-    }
-
-    col = mix(ground, horCol, clamp((z - 16.0) / 22.0, 0.0, 1.0));
-
-    float roadH = 1.62;
+    float sy = max(horizon - uv.y, 0.00055);
+    float z = 0.34 / sy;
+    float xw = (uv.x - 0.5) * aspect * z * 1.08;
     float ax = abs(xw);
-    if (ax < roadH + 0.62) {
-      if (ax > roadH) {
-        vec3 sh = uKind == 2 ? vec3(0.93, 0.95, 0.97)
-                : uKind == 3 ? vec3(0.52, 0.32, 0.14)
-                : uKind == 8 ? vec3(0.55, 0.52, 0.42)
-                : vec3(0.16, 0.16, 0.15);
-        if (mod(floor(z * 5.0 + scroll * 0.18) + floor(xw * 7.0), 2.0) < 0.5 && uKind != 2)
-          sh *= 0.78;
-        col = mix(col, sh, 1.0 - clamp((z - 16.0) / 22.0, 0.0, 1.0));
+    float roadH = 1.58;
+    float shoulder = 0.52;
+    float band = fract(z * 0.20 + uScroll);
+
+    vec3 ground = terrain(uKind, step(0.5, band));
+    if (uKind == 8 && xw < -2.6) {
+      ground = mix(vec3(0.08, 0.38, 0.55), vec3(0.18, 0.62, 0.70), 0.5 + 0.5 * sin(xw * 1.6 + uTime));
+    }
+    col = ground;
+
+    if (ax < roadH + shoulder + 0.15) {
+      if (ax > roadH && ax < roadH + shoulder) {
+        float rum = step(0.5, fract(z * 1.65 + uScroll * 0.55 + floor((xw + 8.0) * 3.4)));
+        vec3 ra = uKind == 2 ? vec3(0.90,0.92,0.94) : uKind == 8 ? vec3(0.62,0.52,0.34) : vec3(0.78,0.22,0.10);
+        vec3 rb = uKind == 2 ? vec3(0.55,0.58,0.62) : vec3(0.92,0.92,0.90);
+        col = mix(ra, rb, rum);
       }
       if (ax < roadH) {
-        vec3 asp = uKind == 2 ? vec3(0.52, 0.58, 0.64)
-                 : uKind == 3 ? vec3(0.40, 0.26, 0.14)
-                 : uKind == 5 ? vec3(0.14, 0.16, 0.18)
-                 : uKind == 6 ? vec3(0.07, 0.08, 0.16)
-                 : uKind == 8 ? vec3(0.20, 0.20, 0.22)
-                 : vec3(0.09, 0.095, 0.11);
-        asp += (hash(vec2(floor(xw * 48.0), floor(z * 10.0))) - 0.5) * 0.045;
-        if (uKind == 4) asp = mix(asp, horCol * 0.4 + uAccent * 0.08, 0.42);
-        if (uKind == 1) asp = mix(asp, uAccent * 0.12, 0.18);
+        vec3 asp = vec3(0.10, 0.105, 0.12);
+        if (uKind == 2) asp = vec3(0.50, 0.56, 0.62);
+        else if (uKind == 3) asp = vec3(0.36, 0.24, 0.14);
+        else if (uKind == 5) asp = vec3(0.16, 0.18, 0.20);
+        else if (uKind == 6) asp = vec3(0.07, 0.08, 0.16);
+        else if (uKind == 8) asp = vec3(0.18, 0.18, 0.20);
+        else if (uKind == 1) asp = vec3(0.08, 0.05, 0.12);
+        else if (uKind == 4) asp = vec3(0.07, 0.08, 0.10);
+        asp += (hash(vec2(floor(xw * 64.0), floor(z * 14.0))) - 0.5) * 0.05;
         col = asp;
-        if (abs(ax - roadH + 0.035) < 0.048) col = mix(vec3(0.96, 0.94, 0.86), uAccent, 0.12);
-        float dash = fract(z * 0.52 - scroll * 0.09);
-        if (ax < 0.065 && dash < 0.55) {
-          col = (uKind == 8) ? vec3(0.96, 0.84, 0.16) : vec3(0.93, 0.94, 0.92);
+        if (abs(ax - roadH + 0.04) < 0.038) {
+          col = mix(vec3(0.96, 0.86, 0.18), uAccent, 0.08);
         }
-        if (abs(ax - 0.78) < 0.03 && dash < 0.42 && uKind != 6 && uKind != 5) {
-          col = vec3(0.82, 0.83, 0.85);
+        float dash = fract(z * 0.48 - uScroll);
+        if (ax < 0.055 && dash < 0.52) col = vec3(0.95, 0.95, 0.92);
+        if (abs(ax - 0.74) < 0.022 && dash < 0.38 && uKind != 5 && uKind != 6) {
+          col = vec3(0.78, 0.80, 0.82);
         }
-        col += uAccent * uLoad * 0.06 * clamp(1.0 - z * 0.04, 0.0, 1.0);
+        if (uKind == 4 || uKind == 8) {
+          vec2 ru = vec2(uv.x, mix(0.40, 0.22, clamp(sy * 3.4, 0.0, 1.0)));
+          vec3 refl = uHasSky > 0.5 ? texture(uSky, ru).rgb : uSky1;
+          float wet = uKind == 4 ? 0.42 : 0.18;
+          col = mix(col, refl, wet * (1.0 - smoothstep(10.0, 26.0, z)));
+        }
+        col += sunC * 0.12 * exp(-abs(xw) * 0.35) * (1.0 - smoothstep(8.0, 22.0, z));
+        col += uAccent * uLoad * 0.05;
       }
     }
 
-    for (int i = 0; i < 20; i++) {
+    float fog = smoothstep(11.0, 30.0, z);
+    col = mix(col, horCol, fog);
+
+    for (int i = 0; i < 28; i++) {
       float id = float(i);
-      float zs = fract(hash(vec2(id, 1.7)) + scroll * 0.012);
-      float zw = 1.35 + zs * 30.0;
+      float zs = fract(hash(vec2(id, 1.7)) + uScroll * 0.045);
+      float zw = 1.2 + zs * 34.0;
       float side = hash(vec2(id, 3.1)) > 0.5 ? 1.0 : -1.0;
-      float xoff = side * (roadH + 0.5 + hash(vec2(id, 8.8)) * 1.6);
-      float sx = 0.5 + (xoff / zw) / (aspect * 1.18);
-      float py = horizon - 0.26 / zw;
+      float xoff = side * (roadH + 0.55 + hash(vec2(id, 8.8)) * 2.2);
+      float sx = 0.5 + (xoff / zw) / (aspect * 1.08);
+      float py = horizon - 0.34 / zw;
       vec2 q = uv - vec2(sx, py);
-      float sc = 0.62 / zw;
-      if (sc < 0.004) continue;
+      float sc = 0.78 / zw;
+      if (sc < 0.0035) continue;
       if (uKind == 8) {
-        float stem = smoothstep(sc * 0.14, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 2.15);
-        col = mix(col, vec3(0.32, 0.18, 0.08), stem);
-        float fr = length(q - vec2(0.0, sc * 1.85));
-        float canopy = (1.0 - smoothstep(sc * 0.5, sc * 0.95, fr)) * step(q.y, sc * 2.4);
-        col = mix(col, vec3(0.10, 0.36, 0.12), canopy);
+        float stem = smoothstep(sc * 0.10, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 2.4);
+        col = mix(col, vec3(0.28, 0.16, 0.07), stem);
+        float fr = length((q - vec2(0.0, sc * 2.05)) * vec2(1.0, 1.35));
+        float canopy = (1.0 - smoothstep(sc * 0.55, sc * 1.15, fr)) * step(q.y, sc * 2.7);
+        col = mix(col, vec3(0.08, 0.34, 0.10), canopy);
       } else if (uKind == 2) {
-        float pine = smoothstep(sc * 0.55, 0.0, abs(q.x) + max(q.y, 0.0) * 0.35)
-                   * step(0.0, q.y) * step(q.y, sc * 2.5);
-        col = mix(col, vec3(0.16, 0.30, 0.26), pine);
+        float pine = smoothstep(sc * 0.62, 0.0, abs(q.x) + max(q.y, 0.0) * 0.32)
+                   * step(0.0, q.y) * step(q.y, sc * 2.8);
+        col = mix(col, vec3(0.14, 0.28, 0.24), pine);
       } else if (uKind == 3) {
-        float cact = smoothstep(sc * 0.12, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 1.6);
-        col = mix(col, vec3(0.22, 0.42, 0.18), cact);
+        float cact = smoothstep(sc * 0.11, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 1.8);
+        col = mix(col, vec3(0.20, 0.40, 0.16), cact);
       } else if (uKind == 7) {
-        float pag = smoothstep(sc * 0.42, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 1.7);
-        col = mix(col, vec3(0.20, 0.06, 0.10), pag);
-        col += vec3(1.0, 0.42, 0.58) * exp(-length(q - vec2(0.0, sc * 1.35)) * 26.0 * zw) * 0.55;
-      } else if (uKind == 0 || uKind == 1 || uKind == 4 || uKind == 9 || uKind == 5) {
-        float pole = smoothstep(sc * 0.055, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 2.05);
-        col = mix(col, vec3(0.10, 0.10, 0.11), pole);
-        vec3 lamp = uKind == 1 ? uAccent : (uKind == 5 ? vec3(0.85, 0.95, 1.0) : vec3(1.0, 0.82, 0.48));
-        col += lamp * exp(-length(q - vec2(0.0, sc * 2.1)) * (36.0 * zw)) * 0.9;
+        float pag = smoothstep(sc * 0.40, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 1.9);
+        col = mix(col, vec3(0.18, 0.05, 0.09), pag);
+        col += vec3(1.0, 0.42, 0.58) * exp(-length(q - vec2(0.0, sc * 1.45)) * 22.0 * zw) * 0.7;
+      } else if (uKind == 1) {
+        float bld = smoothstep(sc * 0.55, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * (1.6 + hash(vec2(id,9.0))));
+        col = mix(col, vec3(0.08, 0.03, 0.16), bld);
+        col += uAccent * exp(-length(q - vec2(0.0, sc * 1.1)) * 18.0 * zw) * 0.55;
+      } else {
+        float pole = smoothstep(sc * 0.045, 0.0, abs(q.x)) * step(0.0, q.y) * step(q.y, sc * 2.2);
+        col = mix(col, vec3(0.09, 0.09, 0.10), pole);
+        vec3 lamp = uKind == 5 ? vec3(0.85, 0.95, 1.0) : vec3(1.0, 0.80, 0.42);
+        col += lamp * exp(-length(q - vec2(0.0, sc * 2.25)) * (32.0 * zw)) * 0.95;
       }
     }
   }
 
   if (uKind == 4) {
-    float rx = fract(uv.x * 78.0 + uv.y * 10.0);
-    float ry = fract(uv.y * 14.0 - uTime * (3.1 + uSpeed * 0.18));
-    if (rx < 0.035 && ry > 0.62) col += vec3(0.50, 0.60, 0.70) * 0.38;
+    float rx = fract(uv.x * 90.0 + uv.y * 12.0 + uTime * 0.4);
+    float ry = fract(uv.y * 16.0 - uTime * (4.2 + uSpeed * 0.2));
+    if (rx < 0.028 && ry > 0.55) col += vec3(0.55, 0.65, 0.75) * 0.45;
+  }
+  if (uKind == 3 || uKind == 8) {
+    float hz = n2(uv * vec2(18.0, 4.0) + vec2(0.0, uTime * 0.7));
+    uv.x += 0.0;
+    col += vec3(1.0, 0.85, 0.4) * hz * 0.03 * uLoad;
   }
   if (uKind == 9) {
-    float blink = step(0.5, fract(uTime * 2.0));
-    col += vec3(1.0, 0.12, 0.10) * blink * exp(-length((uv - vec2(0.22, horizon - 0.015)) * vec2(aspect, 1.0)) * 26.0);
-    col += vec3(1.0) * (1.0 - blink) * exp(-length((uv - vec2(0.78, horizon - 0.015)) * vec2(aspect, 1.0)) * 26.0);
+    float blink = step(0.5, fract(uTime * 2.2));
+    col += vec3(1.0, 0.10, 0.08) * blink * exp(-length((uv - vec2(0.22, horizon - 0.01)) * vec2(aspect, 1.0)) * 28.0);
+    col += vec3(1.0) * (1.0 - blink) * exp(-length((uv - vec2(0.78, horizon - 0.01)) * vec2(aspect, 1.0)) * 28.0);
   }
 
-  float vig = smoothstep(1.28, 0.18, length((uv - vec2(0.5, 0.46)) * vec2(1.12, 1.0)));
-  col *= mix(0.42, 1.0, vig);
-  col = pow(max(col, 0.0), vec3(0.90));
+  col *= smoothstep(0.0, 0.05, uv.y);
+  float vig = smoothstep(1.35, 0.22, length((uv - vec2(0.5, 0.48)) * vec2(1.15, 1.0)));
+  col *= mix(0.62, 1.0, vig);
+  col = pow(max(col, 0.0), vec3(0.92));
   frag = vec4(col, 1.0);
 }
 `;
@@ -293,6 +302,10 @@ export class GlRoad {
   private fpsT = 0;
   private uFs: Record<string, WebGLUniformLocation | null>;
   private uPt: Record<string, WebGLUniformLocation | null>;
+  private skies = new Map<string, WebGLTexture>();
+  private skyReady = new Set<string>();
+  private dummy: WebGLTexture;
+  private base = "/";
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", {
@@ -313,6 +326,9 @@ export class GlRoad {
       uSky0: loc(gl, this.fs, "uSky0"),
       uSky1: loc(gl, this.fs, "uSky1"),
       uKind: loc(gl, this.fs, "uKind"),
+      uSky: loc(gl, this.fs, "uSky"),
+      uHasSky: loc(gl, this.fs, "uHasSky"),
+      uScroll: loc(gl, this.fs, "uScroll"),
     };
     this.uPt = {
       uRes: loc(gl, this.pt, "uRes"),
@@ -332,9 +348,44 @@ export class GlRoad {
     gl.bindVertexArray(null);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    const dummy = gl.createTexture();
+    if (!dummy) throw new Error("tex");
+    gl.bindTexture(gl.TEXTURE_2D, dummy);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([20, 20, 24, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    this.dummy = dummy;
+  }
+
+  setBase(base: string) {
+    this.base = base.replace(/\/?$/, "/");
+  }
+
+  ensureSky(kind: string) {
+    if (this.skyReady.has(kind) || this.skies.has(kind)) return;
+    const gl = this.gl;
+    const tex = gl.createTexture();
+    if (!tex) return;
+    this.skies.set(kind, tex);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([20, 20, 24, 255]));
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.skyReady.add(kind);
+    };
+    img.src = `${this.base}skies/${kind}.jpg`;
   }
 
   async attachWasm(base: string) {
+    this.setBase(base);
     this.wasm = await loadWasm(base);
   }
 
@@ -379,6 +430,13 @@ export class GlRoad {
     gl.uniform3f(this.uFs.uSky0, sky0[0], sky0[1], sky0[2]);
     gl.uniform3f(this.uFs.uSky1, sky1[0], sky1[1], sky1[2]);
     gl.uniform1i(this.uFs.uKind, kind);
+    this.ensureSky(scene.kind);
+    const skyTex = this.skies.get(scene.kind) ?? this.dummy;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, skyTex);
+    gl.uniform1i(this.uFs.uSky, 0);
+    gl.uniform1f(this.uFs.uHasSky, this.skyReady.has(scene.kind) ? 1 : 0);
+    gl.uniform1f(this.uFs.uScroll, (now / 1000) * (0.55 + speedMps * 0.085));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
     if (wasm) {

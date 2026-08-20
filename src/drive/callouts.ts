@@ -8,7 +8,8 @@ export type HypeLine =
   | "hotdogs"
   | "cukes"
   | "oh-no"
-  | "phantom";
+  | "phantom"
+  | "holy";
 
 const LINES: HypeLine[] = [
   "jesus",
@@ -19,6 +20,7 @@ const LINES: HypeLine[] = [
   "cukes",
   "oh-no",
   "phantom",
+  "holy",
 ];
 
 const FALLBACK: Record<HypeLine, string> = {
@@ -30,6 +32,7 @@ const FALLBACK: Record<HypeLine, string> = {
   cukes: "Cucumbers? Jesus!",
   "oh-no": "Oh no no no!",
   phantom: "Phantom brake. Oh come on.",
+  holy: "Holy moly!",
 };
 
 class CabinHype {

@@ -8,8 +8,8 @@ This is an original recreation of the *GPS cabin HUD* idea popularized by [dribe
 
 ## Cabin
 
-- Ten scenes, including Tesla-garage tributes **Citrus Gator** (Florida sun, gators, banana / cucumber / hot-dog rain) and **Xing Ghost** (grade crossing + cyan vision boxes)
-- Original cabin-hype shout-outs (`Jesus!`, `Oh my!`, …) — synthesized, **not** a real person's voice
+- Ten scenes with cinematic sky plates + a dribe-style pseudo-3D road (rumble strips, world-space dashes, wet asphalt)
+- Tesla-garage tributes **Citrus Gator** and **Xing Ghost**. Gator hits play short public clips of Jeremy Judkins (with permission)
 - Synthesized engine voices (V8, I6, EV inverter, muffled rain, space, synth)
 - Direct drive by default (Tesla single-speed). ICE tributes still have a gearbox
 - Procedural lo-fi cabin radio

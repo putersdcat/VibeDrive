@@ -7,7 +7,17 @@ import { useDrive } from "../store";
 function Thumb({ scene, selected }: { scene: Scene; selected: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    if (ref.current) paintThumb(ref.current, scene);
+    const draw = () => {
+      if (ref.current) paintThumb(ref.current, scene);
+    };
+    draw();
+    const img = new Image();
+    img.onload = draw;
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
+    img.src = `${base}skies/${scene.kind}.jpg`;
+    return () => {
+      img.onload = null;
+    };
   }, [scene]);
   return (
     <canvas

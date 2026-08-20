@@ -53,14 +53,15 @@ export class TributeFx {
         g.z += dt * (0.1 + speed * 0.02);
         if (!g.hit && g.z > 0.86) {
           g.hit = true;
-          event = Math.random() < 0.55 ? "gator" : "jesus";
+          const hits: HypeLine[] = ["jesus", "oh-my", "holy", "gator"];
+          event = hits[Math.floor(Math.random() * hits.length)]!;
         }
       }
       this.gators = this.gators.filter((g) => g.z < 1.2);
       this.idle += dt;
       if (!event && this.idle > 12 && speed > 3) {
         this.idle = 0;
-        const pool: HypeLine[] = ["oh-my", "bananas", "hotdogs", "cukes", "jesus", "oh-no"];
+        const pool: HypeLine[] = ["oh-my", "holy", "bananas", "hotdogs", "cukes", "jesus", "oh-no"];
         event = pool[Math.floor(Math.random() * pool.length)]!;
       }
     } else if (kind === "xing") {

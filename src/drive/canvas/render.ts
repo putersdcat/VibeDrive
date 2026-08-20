@@ -14,7 +14,25 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function fillSky(ctx: CanvasRenderingContext2D, w: number, h: number, a: string, b: string) {
+const skyPlates = new Map<string, HTMLImageElement>();
+
+function skyPlate(kind: SceneKind): HTMLImageElement | null {
+  const hit = skyPlates.get(kind);
+  if (hit) return hit.complete && hit.naturalWidth ? hit : null;
+  const img = new Image();
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
+  img.src = `${base}skies/${kind}.jpg`;
+  skyPlates.set(kind, img);
+  return img.complete && img.naturalWidth ? img : null;
+}
+
+function fillSky(ctx: CanvasRenderingContext2D, w: number, h: number, a: string, b: string, kind?: SceneKind) {
+  const plate = kind ? skyPlate(kind) : null;
+  if (plate) {
+    const srcH = plate.naturalHeight * 0.42;
+    ctx.drawImage(plate, 0, 0, plate.naturalWidth, srcH, 0, 0, w, h * 0.56);
+    return;
+  }
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, a);
   g.addColorStop(1, b);
@@ -191,7 +209,9 @@ export function renderScene(
   const [ar, ag, ab] = hexToRgb(scene.accent);
   const accent = `rgb(${ar},${ag},${ab})`;
 
-  fillSky(ctx, w, h, scene.sky[0], scene.sky[1]);
+  fillSky(ctx, w, h, scene.sky[0], scene.sky[1], scene.kind);
+  const hasPlate = Boolean(skyPlate(scene.kind));
+  if (!hasPlate) {
   {
     const sunX = scene.kind === "florida" || scene.kind === "desert" ? w * 0.76 : w * 0.22;
     const sunY = vpY * 0.55;
@@ -251,6 +271,7 @@ export function renderScene(
     }
     ctx.fillStyle = "rgba(70, 160, 70, 0.35)";
     ctx.fillRect(0, vpY, w, 18);
+  }
   }
   if (scene.kind === "xing") {
     ctx.fillStyle = Math.floor(st.t * 4) % 2 === 0 ? "#ff3030" : "#f4f4f4";

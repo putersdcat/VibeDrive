@@ -143,7 +143,8 @@ export function SettingsPanel() {
         <section className="vd-group">
           <h3>Cabin hype</h3>
           <p className="vd-hint">
-            Original shout-outs on Citrus Gator and Xing Ghost. Not anyone's real voice — a cabin commentator.
+            Citrus Gator plays short public clips of Jeremy Judkins (with permission) on gator hits, plus original
+            produce-rain lines.
           </p>
           <div className="vd-row">
             <span>Callouts</span>
