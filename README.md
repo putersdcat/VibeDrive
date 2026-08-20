@@ -31,22 +31,24 @@ This is an original recreation of the *GPS cabin HUD* idea popularized by [dribe
 
 ## How speed gets into the cabin
 
-Priority: **pinned speed → Tesla (if live) → GPS (if not simulating) → throttle sim**.
+Priority: **pinned speed → GPS → optional Tessie stream → pedals**.
 
-### Tesla
+### Tesla in-car browser (the dribe.app path)
 
-Official Tesla **Fleet Telemetry** (`VehicleSpeed`, miles/hour) is a vehicle-to-*your-server* stream. A GitHub Pages site has no server and cannot call Tesla REST (CORS). The cabin therefore never talks to Tesla directly.
+dribe.app does **not** talk to Tessie or Tesla Fleet. It calls `navigator.geolocation.watchPosition({ enableHighAccuracy: true })` and reads `coords.speed`. Tesla's QtWebEngine browser exposes the vehicle GPS that way. Open VibeDrive in the car browser, tap ignite, allow location if asked. Pedals hide; the cabin follows the car.
 
-Viable static-host paths:
+A web page cannot request Tesla telemetry just because it is running in the car. There is no in-browser vehicle API.
 
-| Source | What it is | Token location |
-| --- | --- | --- |
-| **Tessie** | Browser WebSocket `wss://streaming.tessie.com/{VIN}?access_token=…` | localStorage |
-| **Custom `wss://`** | Your TeslaMate / Fleet Telemetry forwarder | localStorage |
-| **Demo** | Local Tesla-shaped speed wave, no account | none |
-| **GPS** | Phone in the car, `Geolocation.coords.speed` | none |
+### Optional extras (phone / laptop)
 
-VIN and Tessie token never leave this tab. Open **Settings → Tesla telemetry**.
+| Source | What it is |
+| --- | --- |
+| **GPS** | Same Geolocation API on a phone |
+| **Tessie** | `wss://streaming.tessie.com/{VIN}?access_token=…` if you already pay for Tessie |
+| **Custom `wss://`** | Your TeslaMate / Fleet forwarder |
+| **Pedals / pin** | Desk preview |
+
+VIN and Tessie token never leave this tab.
 
 ## High FPS road
 
