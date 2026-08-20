@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { detectTeslaBrowser } from "./car";
 import { DEFAULT_SCENE_ID, TRACKS, sceneById } from "./scenes";
 import { autoGearForSpeed, rpmFromSpeed } from "./gearbox";
 import type { GpsStatus, SpeedUnit, TeslaLink, TeslaStatus, ThemePref } from "./types";
@@ -27,6 +28,7 @@ type DriveState = {
   shiftFlash: number;
   gpsStatus: GpsStatus;
   gpsSpeedMps: number;
+  carBrowser: boolean;
   simSpeedMps: number;
   teslaSpeedMps: number;
   teslaLink: TeslaLink;
@@ -71,6 +73,7 @@ type DriveState = {
   setPinnedKmh: (v: number) => void;
   setSimulate: (v: boolean) => void;
   setGps: (status: GpsStatus, speedMps: number | null) => void;
+  setCarBrowser: (v: boolean) => void;
   setTeslaLink: (v: TeslaLink) => void;
   setTeslaVin: (v: string) => void;
   setTeslaToken: (v: string) => void;
@@ -106,6 +109,7 @@ export const useDrive = create<DriveState>()(
       shiftFlash: 0,
       gpsStatus: "idle",
       gpsSpeedMps: 0,
+      carBrowser: typeof navigator !== "undefined" && detectTeslaBrowser(),
       simSpeedMps: 0,
       teslaSpeedMps: 0,
       teslaLink: "off",
@@ -124,7 +128,7 @@ export const useDrive = create<DriveState>()(
       brake: false,
       pinSpeed: false,
       pinnedKmh: 90,
-      simulate: true,
+      simulate: false,
       trackIndex: 0,
       musicOn: false,
       hypeOn: true,
@@ -167,6 +171,7 @@ export const useDrive = create<DriveState>()(
       setPinnedKmh: (pinnedKmh) => set({ pinnedKmh }),
       setSimulate: (simulate) => set({ simulate }),
       setGps: (gpsStatus, speedMps) => set({ gpsStatus, gpsSpeedMps: speedMps ?? 0 }),
+      setCarBrowser: (carBrowser) => set({ carBrowser }),
       setTeslaLink: (teslaLink) => set({ teslaLink }),
       setTeslaVin: (teslaVin) => set({ teslaVin }),
       setTeslaToken: (teslaToken) => set({ teslaToken }),
@@ -186,7 +191,7 @@ export const useDrive = create<DriveState>()(
         const s = get();
         const scene = sceneById(s.sceneId);
         const teslaLive = s.teslaStatus === "live" && s.teslaLink !== "off";
-        const liveGps = s.gpsStatus === "live" && s.gpsSpeedMps > 0.6 && !s.simulate;
+        const gpsLive = s.gpsStatus === "live" && !s.simulate;
         let next = s.simSpeedMps;
         let load = 0;
         let source: CabinSource = "sim";
@@ -197,16 +202,22 @@ export const useDrive = create<DriveState>()(
           const delta = target - next;
           next += delta * Math.min(1, dt * 1.8);
           load = Math.min(1, Math.abs(delta) / 12 + 0.12);
-        } else if (teslaLive) {
+        } else if (gpsLive) {
+          source = "gps";
+          const target = s.gpsSpeedMps;
+          const delta = target - next;
+          next += delta * Math.min(1, dt * 8);
+          load = Math.min(1, Math.max(0, Math.abs(delta) / 8 + 0.08));
+        } else if (teslaLive && !s.simulate) {
           source = "tesla";
           const target = s.teslaSpeedMps;
           const delta = target - next;
           next += delta * Math.min(1, dt * 6);
           load = Math.min(1, Math.max(0.08, Math.abs(delta) / 6 + target / 70));
-        } else if (liveGps) {
+        } else if (s.carBrowser && !s.simulate) {
           source = "gps";
-          next = s.gpsSpeedMps;
-          load = Math.min(1, Math.max(0, (next - s.speedMps) / 8 + 0.15));
+          next = Math.max(0, next - (2.2 + next * 0.18) * dt);
+          load = next > 1 ? 0.1 : 0;
         } else {
           const max = 62;
           if (s.throttle) {

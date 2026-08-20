@@ -116,7 +116,7 @@ export function SettingsPanel() {
             </div>
           </div>
           <div className="vd-row">
-            <span>Prefer simulation</span>
+            <span>Use pedals instead of GPS</span>
             <button
               type="button"
               role="switch"
@@ -152,8 +152,8 @@ export function SettingsPanel() {
         <section className="vd-group">
           <h3>Tesla telemetry</h3>
           <p className="vd-hint">
-            Official Fleet Telemetry lands on a server you own — a static demo cannot terminate it. Use Tessie, a
-            custom <code>wss://</code> forwarder, GPS with the phone in the car, or the cabin demo.
+            In the Tesla in-car browser, speed comes from GPS — same as dribe.app. There is no vehicle API a web page
+            can request. Tessie / a custom <code>wss://</code> is only for running this on a phone or laptop.
           </p>
           <div className="vd-row">
             <span>Source</span>

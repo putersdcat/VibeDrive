@@ -3,6 +3,7 @@ import { SCENES, sceneById, TRACKS } from "../scenes";
 import { driveEngine } from "../engine";
 import { lofiPlayer } from "../music";
 import { teslaStream } from "../telemetry";
+import { applyCarBrowserDefaults, startGpsWatch } from "../gps";
 import { cabinHype } from "../callouts";
 import { useDrive } from "../store";
 import { HeaderBar } from "./HeaderBar";
@@ -49,26 +50,12 @@ function useDriveLoop() {
 }
 
 function useGps() {
+  const started = useDrive((s) => s.started);
   useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      useDrive.getState().setGps("unavailable", 0);
-      return;
-    }
-    useDrive.getState().setGps("waiting", 0);
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        const spd = pos.coords.speed;
-        useDrive
-          .getState()
-          .setGps("live", typeof spd === "number" && Number.isFinite(spd) ? Math.max(0, spd) : 0);
-      },
-      (err) => {
-        useDrive.getState().setGps(err.code === 1 ? "denied" : "unavailable", 0);
-      },
-      { enableHighAccuracy: true, maximumAge: 800, timeout: 8000 },
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
+    applyCarBrowserDefaults();
+    if (!started) return;
+    return startGpsWatch();
+  }, [started]);
 }
 
 function useTesla() {
@@ -119,6 +106,7 @@ function useKeys() {
 export function DriveApp({ account }: { account?: ReactNode }) {
   const booted = useDrive((s) => s.booted);
   const started = useDrive((s) => s.started);
+  const carBrowser = useDrive((s) => s.carBrowser);
   const sceneId = useDrive((s) => s.sceneId);
   const wheelRight = useDrive((s) => s.wheelRight);
   const muted = useDrive((s) => s.muted);
@@ -216,7 +204,11 @@ export function DriveApp({ account }: { account?: ReactNode }) {
           <span className="vd-logo vd-logo-lg" />
           <span className="vd-wordmark">VibeDrive</span>
           <span className="vd-intro-copy">Tap to ignite the cabin</span>
-          <span className="vd-intro-hint">Throttle · GPS · Tesla</span>
+          <span className="vd-intro-hint">
+            {carBrowser
+              ? "This car's GPS drives the cabin"
+              : "Open in the Tesla browser — GPS is the speed source"}
+          </span>
         </button>
       ) : (
         <>
