@@ -16,7 +16,7 @@ type KindFx = {
   count: number;
   clouds: boolean;
   cloudAlpha: number;
-  weather: "produce" | "petals" | null;
+  weather: "produce" | "petals" | "snow" | "dust" | null;
   gators: boolean;
 };
 
@@ -38,7 +38,7 @@ const FX: Partial<Record<SceneKind, KindFx>> = {
     count: 8,
     clouds: true,
     cloudAlpha: 0.7,
-    weather: null,
+    weather: "snow",
     gators: false,
   },
   desert: {
@@ -48,7 +48,7 @@ const FX: Partial<Record<SceneKind, KindFx>> = {
     count: 8,
     clouds: true,
     cloudAlpha: 0.55,
-    weather: null,
+    weather: "dust",
     gators: false,
   },
   lantern: {
@@ -81,7 +81,7 @@ const SPRITE_NAMES = [
   "petal-0",
 ];
 
-const MAX_DROPS = 64;
+const MAX_DROPS = 96;
 const GATOR_LEN = 1.72;
 const HIT_Z = 1.48;
 const WORLD_LEN = 36;
@@ -100,6 +100,7 @@ type Produce = {
   variant: 0 | 1 | 2;
   settled: boolean;
   petal: boolean;
+  mode: "produce" | "petals" | "snow" | "dust";
 };
 
 type Gator = {
@@ -204,6 +205,15 @@ export class TributeFx {
         });
       }
     }
+    if (spec.weather) {
+      const fill =
+        spec.weather === "snow" ? 64 : spec.weather === "dust" ? 48 : spec.weather === "petals" ? 22 : 8;
+      for (let i = 0; i < fill; i++) {
+        this.spawnDrop(spec.weather);
+        const d = this.drops[this.drops.length - 1]!;
+        d.yw *= Math.random();
+      }
+    }
   }
 
   private spawnGator() {
@@ -220,25 +230,40 @@ export class TributeFx {
     });
   }
 
-  private spawnDrop(petal: boolean) {
-    const z = 2.8 + Math.random() * 24;
-    const skyT = 0.02 + Math.random() * 0.36;
+  private spawnDrop(mode: "produce" | "petals" | "snow" | "dust") {
+    const z = 2.4 + Math.random() * 26;
+    const skyT = Math.random() * 0.42;
     const yw = CAM_H - (skyT - (1 - HORIZON)) * z;
-    const spread = ROAD_H * 2.6 + z * 0.08;
+    const spread = ROAD_H * 3.2 + z * 0.14;
     this.drops.push({
       xw: (Math.random() - 0.5) * spread,
       z,
-      yw: Math.max(0.4, yw),
-      vy: petal ? 0.1 + Math.random() * 0.22 : 0.2 + Math.random() * 0.45,
+      yw: Math.max(0.55, yw),
+      vy:
+        mode === "snow"
+          ? 0.08 + Math.random() * 0.16
+          : mode === "dust"
+            ? 0.06 + Math.random() * 0.14
+            : mode === "petals"
+              ? 0.1 + Math.random() * 0.22
+              : 0.2 + Math.random() * 0.45,
       rot: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * (6 + Math.random() * 9),
+      spin: (Math.random() - 0.5) * (5 + Math.random() * 8),
       tumble: Math.random() * Math.PI * 2,
-      tumbleSpin: (Math.random() - 0.5) * 7,
-      s: petal ? 0.28 + Math.random() * 0.28 : 0.45 + Math.random() * 0.4,
+      tumbleSpin: (Math.random() - 0.5) * 6,
+      s:
+        mode === "snow"
+          ? 0.18 + Math.random() * 0.28
+          : mode === "dust"
+            ? 0.16 + Math.random() * 0.3
+            : mode === "petals"
+              ? 0.28 + Math.random() * 0.28
+              : 0.45 + Math.random() * 0.4,
       kind: Math.floor(Math.random() * 3) as 0 | 1 | 2,
       variant: Math.floor(Math.random() * 3) as 0 | 1 | 2,
       settled: false,
-      petal,
+      petal: mode === "petals",
+      mode,
     });
   }
 
@@ -249,11 +274,12 @@ export class TributeFx {
     if (!spec) return event;
 
     if (spec.weather) {
-      this.rain += dt * (speed > 1.2 ? 1.15 : 0.08);
+      const always = spec.weather === "snow" || spec.weather === "dust";
+      this.rain += dt * (always ? 2.4 : speed > 1.2 ? 1.15 : 0.22);
       if (this.rain > 1 && this.drops.length < MAX_DROPS) {
-        this.rain = Math.random() * -0.35;
-        const n = 2 + Math.floor(Math.random() * 4);
-        for (let i = 0; i < n; i++) this.spawnDrop(spec.weather === "petals");
+        this.rain = Math.random() * -0.2;
+        const n = always ? 4 + Math.floor(Math.random() * 6) : 2 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < n; i++) this.spawnDrop(spec.weather);
       }
       for (const d of this.drops) {
         d.z = advance(d.z, speed, dt);
@@ -264,9 +290,10 @@ export class TributeFx {
           d.tumbleSpin *= Math.exp(-dt * 2.4);
           continue;
         }
-        d.vy += (d.petal ? 0.55 : 1.15) * dt;
+        const g = d.mode === "snow" ? 0.35 : d.mode === "dust" ? 0.28 : d.mode === "petals" ? 0.55 : 1.15;
+        d.vy += g * dt;
         d.yw -= d.vy * dt;
-        d.xw += (Math.random() - 0.5) * 0.22 * dt;
+        d.xw += (d.mode === "dust" ? 0.55 : 0) * dt + (Math.random() - 0.5) * 0.28 * dt;
         if (d.yw <= 0) {
           d.yw = 0;
           d.settled = true;
@@ -339,7 +366,15 @@ export class TributeFx {
       queue.push({ z: g.z, draw: () => drawGator(ctx, w, h, g) });
     }
     for (const d of this.drops) {
-      queue.push({ z: d.z - d.yw * 0.15, draw: () => (d.petal ? drawPetal(ctx, w, h, d) : drawProduce(ctx, w, h, d)) });
+      queue.push({
+        z: d.z - d.yw * 0.15,
+        draw: () => {
+          if (d.mode === "snow") drawFlake(ctx, w, h, d);
+          else if (d.mode === "dust") drawDust(ctx, w, h, d);
+          else if (d.mode === "petals") drawPetal(ctx, w, h, d);
+          else drawProduce(ctx, w, h, d);
+        },
+      });
     }
     queue.sort((a, b) => b.z - a.z);
     for (const s of queue) s.draw();
@@ -426,6 +461,30 @@ function drawPetal(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produ
   ctx.rotate(d.rot);
   ctx.globalAlpha = 0.7;
   ctx.drawImage(img, -dw / 2, d.settled ? -dh * 0.7 : -dh / 2, dw, dh);
+  ctx.restore();
+}
+
+function drawFlake(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produce) {
+  const p = project(d.xw, d.z, w, h, d.yw);
+  const r = Math.max(1.2, Math.min(9, 0.22 * d.s * p.scale * w));
+  ctx.save();
+  ctx.globalAlpha = d.settled ? 0.55 : 0.85;
+  ctx.fillStyle = "#f4f8ff";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawDust(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produce) {
+  const p = project(d.xw, d.z, w, h, d.yw);
+  const r = Math.max(1.1, Math.min(8, 0.2 * d.s * p.scale * w));
+  ctx.save();
+  ctx.globalAlpha = d.settled ? 0.28 : 0.55;
+  ctx.fillStyle = d.kind === 0 ? "#c9843a" : d.kind === 1 ? "#e0b06a" : "#a86a2a";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
