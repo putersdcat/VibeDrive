@@ -1,5 +1,5 @@
 import type { HypeLine } from "../callouts";
-import { ROAD_H, WORLD_SPEED, project } from "../camera";
+import { CAM_H, HORIZON, ROAD_H, WORLD_SPEED, project } from "../camera";
 import type { SceneKind } from "../types";
 
 const PRODUCE: Record<0 | 1 | 2, [string, string, string]> = {
@@ -81,7 +81,7 @@ const SPRITE_NAMES = [
   "petal-0",
 ];
 
-const MAX_DROPS = 46;
+const MAX_DROPS = 64;
 const GATOR_LEN = 1.72;
 const HIT_Z = 1.48;
 const WORLD_LEN = 36;
@@ -172,7 +172,7 @@ export class TributeFx {
     this.props = [];
     this.clouds = [];
     this.spawn = 0;
-    this.rain = -2;
+    this.rain = 0.6;
     this.idle = 4;
     this.bump = false;
     if (!spec) return;
@@ -221,13 +221,15 @@ export class TributeFx {
   }
 
   private spawnDrop(petal: boolean) {
-    const onRoad = Math.random() < 0.78;
-    const xw = onRoad ? (Math.random() - 0.5) * ROAD_H * 1.55 : (Math.random() < 0.5 ? -1 : 1) * (ROAD_H + 0.2 + Math.random() * 0.7);
+    const z = 2.8 + Math.random() * 24;
+    const skyT = 0.02 + Math.random() * 0.36;
+    const yw = CAM_H - (skyT - (1 - HORIZON)) * z;
+    const spread = ROAD_H * 2.6 + z * 0.08;
     this.drops.push({
-      xw,
-      z: 12 + Math.random() * 16,
-      yw: 0.42 + Math.random() * 0.85,
-      vy: 0.18 + Math.random() * 0.35,
+      xw: (Math.random() - 0.5) * spread,
+      z,
+      yw: Math.max(0.4, yw),
+      vy: petal ? 0.1 + Math.random() * 0.22 : 0.2 + Math.random() * 0.45,
       rot: Math.random() * Math.PI * 2,
       spin: (Math.random() - 0.5) * (6 + Math.random() * 9),
       tumble: Math.random() * Math.PI * 2,
@@ -247,10 +249,10 @@ export class TributeFx {
     if (!spec) return event;
 
     if (spec.weather) {
-      this.rain += dt * (speed > 1.4 ? 0.45 : 0);
+      this.rain += dt * (speed > 1.2 ? 1.15 : 0.08);
       if (this.rain > 1 && this.drops.length < MAX_DROPS) {
-        this.rain = Math.random() * -1.4;
-        const n = 1 + Math.floor(Math.random() * 3);
+        this.rain = Math.random() * -0.35;
+        const n = 2 + Math.floor(Math.random() * 4);
         for (let i = 0; i < n; i++) this.spawnDrop(spec.weather === "petals");
       }
       for (const d of this.drops) {
@@ -262,9 +264,9 @@ export class TributeFx {
           d.tumbleSpin *= Math.exp(-dt * 2.4);
           continue;
         }
-        d.vy += 0.85 * dt;
+        d.vy += (d.petal ? 0.55 : 1.15) * dt;
         d.yw -= d.vy * dt;
-        d.xw += (Math.random() - 0.5) * 0.15 * dt;
+        d.xw += (Math.random() - 0.5) * 0.22 * dt;
         if (d.yw <= 0) {
           d.yw = 0;
           d.settled = true;
