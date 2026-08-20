@@ -134,6 +134,8 @@ export function DriveApp({ account }: { account?: ReactNode }) {
   }, []);
 
   const ignite = () => {
+    applyCarBrowserDefaults();
+    startGpsWatch();
     driveEngine.unlock();
     driveEngine.start();
     driveEngine.setVolume(useDrive.getState().engineVolume);
@@ -162,7 +164,7 @@ export function DriveApp({ account }: { account?: ReactNode }) {
           <span className="vd-intro-hint">
             {carBrowser
               ? "This car's GPS drives the cabin"
-              : "Throttle and brake on a desk — GPS only in the Tesla browser"}
+              : "Tap to ignite — GPS in the Tesla browser, pedals on a desk"}
           </span>
         </button>
       ) : (

@@ -26,6 +26,7 @@ type DriveState = {
   shiftFlash: number;
   gpsStatus: GpsStatus;
   gpsSpeedMps: number;
+  gpsNative: boolean;
   carBrowser: boolean;
   simSpeedMps: number;
   demoOn: boolean;
@@ -62,7 +63,7 @@ type DriveState = {
   setPinSpeed: (v: boolean) => void;
   setPinnedKmh: (v: number) => void;
   setSimulate: (v: boolean) => void;
-  setGps: (status: GpsStatus, speedMps: number | null) => void;
+  setGps: (status: GpsStatus, speedMps: number | null, native?: boolean) => void;
   setCarBrowser: (v: boolean) => void;
   setDemoOn: (v: boolean) => void;
   setFps: (v: number) => void;
@@ -90,6 +91,7 @@ export const useDrive = create<DriveState>()(
       shiftFlash: 0,
       gpsStatus: "idle",
       gpsSpeedMps: 0,
+      gpsNative: false,
       carBrowser: typeof navigator !== "undefined" && detectTeslaBrowser(),
       simSpeedMps: 0,
       demoOn: false,
@@ -143,7 +145,8 @@ export const useDrive = create<DriveState>()(
       setPinSpeed: (pinSpeed) => set({ pinSpeed }),
       setPinnedKmh: (pinnedKmh) => set({ pinnedKmh }),
       setSimulate: (simulate) => set({ simulate }),
-      setGps: (gpsStatus, speedMps) => set({ gpsStatus, gpsSpeedMps: speedMps ?? 0 }),
+      setGps: (gpsStatus, speedMps, native) =>
+        set({ gpsStatus, gpsSpeedMps: speedMps ?? 0, gpsNative: native ?? false }),
       setCarBrowser: (carBrowser) => set({ carBrowser }),
       setDemoOn: (demoOn) => set({ demoOn, demoT: demoOn ? get().demoT : 0 }),
       setFps: (fps) => set({ fps }),
@@ -152,7 +155,10 @@ export const useDrive = create<DriveState>()(
       tick: (dt) => {
         const s = get();
         const scene = sceneById(s.sceneId);
-        const gpsLive = s.carBrowser && s.gpsStatus === "live" && !s.simulate;
+        const gpsLive =
+          !s.simulate &&
+          s.gpsStatus === "live" &&
+          (s.carBrowser || s.gpsNative || s.gpsSpeedMps > 1.2);
         let next = s.simSpeedMps;
         let load = 0;
         let source: CabinSource = "sim";

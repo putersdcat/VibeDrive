@@ -1,14 +1,12 @@
-/** Tesla in-car browser (QtWebEngine / TeslaBrowser). No special vehicle API. */
+/** Tesla in-car Chromium / QtWebEngine. UA strings vary a lot by MCU year. */
 export function detectTeslaBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
+  const ua = navigator.userAgent || "";
   if (/tesla|qtcarbrowser|teslabrowser/i.test(ua)) return true;
-  const qt = /QtWebEngine/i.test(ua);
-  const x11linux = /X11/i.test(ua) && /Linux/i.test(ua);
-  const desk =
-    typeof window !== "undefined" &&
-    window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  if ((qt || x11linux) && !desk && !/android/i.test(ua)) return true;
+  if (/QtWebEngine/i.test(ua) && /linux/i.test(ua)) return true;
+  const linux = /Linux/i.test(ua) && /X11|GNU/i.test(ua);
+  const phone = /android|iphone|ipad|windows|macintosh|cros/i.test(ua);
+  if (linux && !phone && (navigator.maxTouchPoints || 0) > 0) return true;
   return false;
 }
 
