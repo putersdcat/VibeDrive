@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { LayoutPanelLeft, Settings2, Volume2, VolumeX } from "lucide-react";
 import { useDrive } from "../store";
+import { BrandMark } from "./BrandMark";
 
 export function HeaderBar({ account }: { account?: ReactNode }) {
   const dockOpen = useDrive((s) => s.dockOpen);
@@ -12,7 +13,7 @@ export function HeaderBar({ account }: { account?: ReactNode }) {
   return (
     <header className="vd-header">
       <div className="vd-brand">
-        <span className="vd-logo" aria-hidden />
+        <BrandMark />
         <span className="vd-wordmark">VibeDrive</span>
       </div>
       <div className="vd-meta">

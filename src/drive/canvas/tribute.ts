@@ -1,5 +1,6 @@
 import type { HypeLine } from "../callouts";
-import { ROAD_H, WORLD_SPEED, project } from "../camera";
+import { assetRoot, loadImageAsset } from "../assets";
+import { CAM_H, HORIZON, ROAD_H, WORLD_SPEED, project } from "../camera";
 import type { SceneKind } from "../types";
 
 const PRODUCE: Record<0 | 1 | 2, [string, string, string]> = {
@@ -38,7 +39,7 @@ const FX: Partial<Record<SceneKind, KindFx>> = {
     count: 8,
     clouds: true,
     cloudAlpha: 0.7,
-    weather: "snow",
+    weather: null,
     gators: false,
   },
   desert: {
@@ -48,7 +49,7 @@ const FX: Partial<Record<SceneKind, KindFx>> = {
     count: 8,
     clouds: true,
     cloudAlpha: 0.55,
-    weather: "dust",
+    weather: null,
     gators: false,
   },
   lantern: {
@@ -58,12 +59,12 @@ const FX: Partial<Record<SceneKind, KindFx>> = {
     count: 8,
     clouds: false,
     cloudAlpha: 0,
-    weather: "petals",
+    weather: null,
     gators: false,
   },
 };
 
-const SPRITE_NAMES = [
+export const SPRITE_NAMES = [
   ...PRODUCE[0],
   ...PRODUCE[1],
   ...PRODUCE[2],
@@ -126,16 +127,28 @@ type Cloud = {
 };
 
 const sprites: Record<string, HTMLImageElement> = {};
+const spriteLoads = new Map<string, Promise<void>>();
 
-export function loadTributeSprites(base: string) {
-  const root = base.replace(/\/?$/, "/");
-  for (const name of SPRITE_NAMES) {
-    if (sprites[name]?.src) continue;
-    const img = new Image();
-    img.decoding = "async";
-    img.src = `${root}sprites/${name}.png`;
-    sprites[name] = img;
-  }
+export function loadTributeSprites(base: string, onProgress?: () => void): Promise<void> {
+  const root = assetRoot(base);
+  const cached = spriteLoads.get(root);
+  if (cached) return cached;
+
+  const loading = Promise.all(
+    SPRITE_NAMES.map(async (name) => {
+      try {
+        if (!sprites[name]?.complete || !sprites[name]?.naturalWidth) {
+          sprites[name] = await loadImageAsset(`${root}sprites/${name}.png`);
+        }
+      } catch {
+        // Tribute artwork is optional; the road and weather have non-image fallbacks.
+      } finally {
+        onProgress?.();
+      }
+    }),
+  ).then(() => undefined);
+  spriteLoads.set(root, loading);
+  return loading;
 }
 
 function spr(name: string): HTMLImageElement | null {
@@ -226,35 +239,34 @@ export class TributeFx {
   }
 
   private spawnDrop(mode: "produce" | "petals" | "snow" | "dust") {
-    const near = Math.random() < 0.72;
-    const z = near ? 2.1 + Math.random() * 9 : 9 + Math.random() * 14;
-    const corridor = Math.random() < 0.8;
-    const yw = corridor ? 0.04 + Math.random() * 0.4 : 0.38 + Math.random() * (0.28 + z * 0.05);
-    const spread = ROAD_H * (corridor ? 1.9 : 2.8) + z * 0.1;
+    const z = 2.8 + Math.random() * 24;
+    const skyT = 0.02 + Math.random() * 0.36;
+    const yw = CAM_H - (skyT - (1 - HORIZON)) * z;
+    const spread = ROAD_H * 2.6 + z * 0.08;
     this.drops.push({
       xw: (Math.random() - 0.5) * spread,
       z,
-      yw,
+      yw: Math.max(0.45, yw),
       vy:
         mode === "snow"
-          ? 0.12 + Math.random() * 0.22
+          ? 0.08 + Math.random() * 0.16
           : mode === "dust"
-            ? 0.08 + Math.random() * 0.18
+            ? 0.06 + Math.random() * 0.14
             : mode === "petals"
-              ? 0.14 + Math.random() * 0.26
-              : 0.22 + Math.random() * 0.4,
+              ? 0.1 + Math.random() * 0.22
+              : 0.2 + Math.random() * 0.45,
       rot: Math.random() * Math.PI * 2,
       spin: (Math.random() - 0.5) * (5 + Math.random() * 8),
       tumble: Math.random() * Math.PI * 2,
       tumbleSpin: (Math.random() - 0.5) * 6,
       s:
         mode === "snow"
-          ? 0.28 + Math.random() * 0.4
+          ? 0.18 + Math.random() * 0.28
           : mode === "dust"
-            ? 0.2 + Math.random() * 0.35
+            ? 0.16 + Math.random() * 0.3
             : mode === "petals"
-              ? 0.4 + Math.random() * 0.45
-              : 0.5 + Math.random() * 0.45,
+              ? 0.28 + Math.random() * 0.28
+              : 0.45 + Math.random() * 0.4,
       kind: Math.floor(Math.random() * 3) as 0 | 1 | 2,
       variant: Math.floor(Math.random() * 3) as 0 | 1 | 2,
       settled: false,
@@ -273,10 +285,15 @@ export class TributeFx {
       const always = spec.weather === "snow" || spec.weather === "dust" || spec.weather === "petals";
       const cap =
         spec.weather === "snow" ? 160 : spec.weather === "petals" ? 90 : spec.weather === "dust" ? 110 : 52;
-      this.rain += dt * (always ? 3.2 : speed > 1.2 ? 1.15 : 0.22);
+      this.rain += dt * (always ? 1.8 : speed > 1.2 ? 1.15 : 0.08);
       if (this.rain > 1 && this.drops.length < cap) {
-        this.rain = Math.random() * -0.12;
-        const n = spec.weather === "snow" ? 6 + Math.floor(Math.random() * 8) : spec.weather === "petals" ? 4 + Math.floor(Math.random() * 5) : 3 + Math.floor(Math.random() * 5);
+        this.rain = Math.random() * -0.28;
+        const n =
+          spec.weather === "snow"
+            ? 2 + Math.floor(Math.random() * 4)
+            : spec.weather === "petals"
+              ? 1 + Math.floor(Math.random() * 3)
+              : 2 + Math.floor(Math.random() * 3);
         for (let i = 0; i < n; i++) this.spawnDrop(spec.weather);
       }
       for (const d of this.drops) {
@@ -288,7 +305,7 @@ export class TributeFx {
           d.tumbleSpin *= Math.exp(-dt * 2.4);
           continue;
         }
-        const g = d.mode === "snow" ? 0.55 : d.mode === "dust" ? 0.4 : d.mode === "petals" ? 0.7 : 1.15;
+        const g = d.mode === "snow" ? 0.35 : d.mode === "dust" ? 0.28 : d.mode === "petals" ? 0.55 : 1.15;
         d.vy += g * dt;
         d.yw -= d.vy * dt;
         d.xw += (d.mode === "dust" ? 0.55 : 0) * dt + (Math.random() - 0.5) * 0.28 * dt;
@@ -346,7 +363,16 @@ export class TributeFx {
     return event;
   }
 
-  draw(ctx: CanvasRenderingContext2D, w: number, h: number, kind: SceneKind, t: number, shake = 0, bump = 0) {
+  draw(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    kind: SceneKind,
+    t: number,
+    shake = 0,
+    bump = 0,
+    includeAmbientWeather = true,
+  ) {
     ctx.clearRect(0, 0, w, h);
     const spec = FX[kind];
     if (!spec) return;
@@ -364,6 +390,7 @@ export class TributeFx {
       queue.push({ z: g.z, draw: () => drawGator(ctx, w, h, g) });
     }
     for (const d of this.drops) {
+      if (!includeAmbientWeather && d.mode !== "produce") continue;
       queue.push({
         z: d.z - d.yw * 0.15,
         draw: () => {
@@ -464,7 +491,7 @@ function drawPetal(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produ
 
 function drawFlake(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produce) {
   const p = project(d.xw, d.z, w, h, d.yw);
-  const r = Math.max(1.4, Math.min(14, 0.38 * d.s * p.scale * w));
+  const r = Math.max(0.9, Math.min(5.5, 0.16 * d.s * p.scale * w));
   ctx.save();
   ctx.globalAlpha = d.settled ? 0.55 : 0.85;
   ctx.fillStyle = "#f4f8ff";
@@ -476,7 +503,7 @@ function drawFlake(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produ
 
 function drawDust(ctx: CanvasRenderingContext2D, w: number, h: number, d: Produce) {
   const p = project(d.xw, d.z, w, h, d.yw);
-  const r = Math.max(1.1, Math.min(8, 0.2 * d.s * p.scale * w));
+  const r = Math.max(0.8, Math.min(4.5, 0.12 * d.s * p.scale * w));
   ctx.save();
   ctx.globalAlpha = d.settled ? 0.28 : 0.55;
   ctx.fillStyle = d.kind === 0 ? "#c9843a" : d.kind === 1 ? "#e0b06a" : "#a86a2a";

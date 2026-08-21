@@ -103,22 +103,24 @@ html[data-theme="light"] {
   width: 22px;
   height: 22px;
   display: block;
-  background:
-    linear-gradient(transparent 0, transparent 100%),
-    conic-gradient(from 210deg, transparent 0 62%, var(--accent) 0 78%, transparent 0);
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M6 22 L16 8 L26 22' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/></svg>")
-    center / contain no-repeat;
-  background-color: var(--fg);
+  object-fit: contain;
+  border-radius: 7px;
+  filter: drop-shadow(0 5px 12px rgb(0 0 0 / 22%));
 }
 .vd-logo-lg {
-  width: 54px;
-  height: 54px;
-  filter: drop-shadow(0 0 18px color-mix(in oklab, var(--accent) 50%, transparent));
+  width: 76px;
+  height: 76px;
+  border-radius: 21px;
+  filter: drop-shadow(0 0 24px rgb(71 226 255 / 26%)) drop-shadow(0 0 44px rgb(255 75 180 / 15%));
 }
 .vd-wordmark {
   font-weight: 600;
   letter-spacing: -0.04em;
   font-size: 17px;
+  background: linear-gradient(100deg, var(--fg) 15%, #65e4ff 52%, #ff76bd 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .vd-meta {
   display: flex;
@@ -788,13 +790,121 @@ html[data-theme="light"] {
 .vd-intro {
   min-height: 100dvh;
   width: 100%;
+  position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   align-content: center;
   gap: 12px;
-  background: var(--bg);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 34%, rgb(61 119 155 / 15%), transparent 30%),
+    radial-gradient(circle at 78% 82%, rgb(232 75 170 / 8%), transparent 32%),
+    var(--bg);
   color: var(--fg);
   border: 0;
+}
+.vd-boot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent);
+}
+.vd-boot-card {
+  width: min(420px, calc(100% - 40px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 42px 28px 34px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 30px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 8%), rgb(255 255 255 / 2%));
+  box-shadow: 0 30px 90px rgb(0 0 0 / 28%), inset 0 1px rgb(255 255 255 / 8%);
+  backdrop-filter: blur(24px) saturate(135%);
+}
+.vd-boot-card .vd-wordmark {
+  font-size: clamp(30px, 8vw, 42px);
+  font-weight: 600;
+  letter-spacing: -0.07em;
+}
+.vd-boot-kicker {
+  margin: 0 0 14px;
+  color: var(--fg-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+.vd-loader {
+  width: min(320px, 100%);
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 11%);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 25%);
+}
+.vd-loader-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #55ddff, #9b8cff 52%, #ff6bb8);
+  box-shadow: 0 0 16px rgb(85 221 255 / 50%);
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.vd-boot-status {
+  width: min(320px, 100%);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--fg-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.vd-boot-status span:last-child {
+  color: var(--fg-muted);
+}
+.vd-boot-orbit {
+  position: absolute;
+  width: min(58vw, 520px);
+  aspect-ratio: 1;
+  border: 1px solid rgb(101 228 255 / 10%);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: rotate(-22deg) scaleY(0.28);
+}
+.vd-boot-orbit::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  top: -3px;
+  left: 18%;
+  border-radius: 50%;
+  background: #65e4ff;
+  box-shadow: 0 0 18px #65e4ff;
+}
+.vd-boot-orbit-a {
+  top: 18%;
+  right: -12%;
+}
+.vd-boot-orbit-b {
+  bottom: 12%;
+  left: -16%;
+  border-color: rgb(255 118 189 / 10%);
+  transform: rotate(28deg) scaleY(0.22);
+}
+.vd-boot-orbit-b::after {
+  background: #ff76bd;
+  box-shadow: 0 0 18px #ff76bd;
+  left: auto;
+  right: 16%;
 }
 .vd-intro-copy {
   margin-top: 8px;

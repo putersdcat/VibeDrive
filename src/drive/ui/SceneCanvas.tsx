@@ -5,6 +5,7 @@ import { renderScene } from "../canvas/render";
 import { loadTributeSprites, tributeFx } from "../canvas/tribute";
 import { cabinHype } from "../callouts";
 import { GlRoad } from "../gl/renderer";
+import { SCENES } from "../scenes";
 
 export function SceneCanvas() {
   const glRef = useRef<HTMLCanvasElement>(null);
@@ -29,7 +30,7 @@ export function SceneCanvas() {
     let lastKind = "";
     let travel = 0;
     tributeFx.reset("florida");
-    loadTributeSprites(base);
+    void loadTributeSprites(base);
 
     const parent0 = canvas.parentElement;
     if (parent0) {
@@ -42,7 +43,6 @@ export function SceneCanvas() {
 
     try {
       gl = new GlRoad(canvas, base);
-      void gl.attachWasm(base);
     } catch (err) {
       console.error("VibeDrive GL init failed", err);
       ctx2d = canvas.getContext("2d");
@@ -115,10 +115,28 @@ export function SceneCanvas() {
       const shout = tributeFx.tick(dt, st.speedMps, sc.kind);
       if (shout) cabinHype.shout(shout);
       if (tributeFx.consumeBump()) st.hitBump();
-      if (fxCtx) tributeFx.draw(fxCtx, fx.clientWidth, fx.clientHeight, sc.kind, now / 1000, st.shake, st.bump);
+      if (fxCtx) {
+        const includeAmbientWeather = gl ? !gl.hasWasmParticles : false;
+        tributeFx.draw(
+          fxCtx,
+          fx.clientWidth,
+          fx.clientHeight,
+          sc.kind,
+          now / 1000,
+          st.shake,
+          st.bump,
+          includeAmbientWeather,
+        );
+      }
       raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(loop);
+    void (async () => {
+      if (gl) {
+        await gl.attachWasm(base);
+        if (running) await gl.prepareSkies(SCENES.map((candidate) => candidate.kind));
+      }
+      if (running) raf = requestAnimationFrame(loop);
+    })();
     return () => {
       running = false;
       cancelAnimationFrame(raf);

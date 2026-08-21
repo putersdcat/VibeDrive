@@ -212,7 +212,6 @@ export function renderScene(
   fillSky(ctx, w, h, scene.sky[0], scene.sky[1], scene.kind);
   const hasPlate = Boolean(skyPlate(scene.kind));
   if (!hasPlate) {
-  {
     const sunX = scene.kind === "florida" || scene.kind === "desert" ? w * 0.76 : w * 0.22;
     const sunY = vpY * 0.55;
     const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, w * 0.22);
@@ -271,7 +270,6 @@ export function renderScene(
     }
     ctx.fillStyle = "rgba(70, 160, 70, 0.35)";
     ctx.fillRect(0, vpY, w, 18);
-  }
   }
 
   const roadColor =

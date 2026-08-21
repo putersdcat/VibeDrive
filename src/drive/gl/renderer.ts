@@ -1,10 +1,74 @@
 import type { Scene } from "../types";
-import { KIND_INDEX } from "../wasm";
+import { assetRoot, loadImageAsset } from "../assets";
+import { getWasm, KIND_INDEX, loadWasm, type WasmCore } from "../wasm";
 
 const VERT_FS = `#version 300 es
 precision highp float;
 const vec2 POS[3] = vec2[3](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
 void main(){ gl_Position = vec4(POS[gl_VertexID], 0.0, 1.0); }
+`;
+
+const VERT_PT = `#version 300 es
+precision highp float;
+precision highp int;
+layout(location=0) in vec4 a;
+uniform vec2 uRes;
+uniform int uKind;
+uniform int uLimit;
+out float vKind;
+out float vNear;
+void main(){
+  if (gl_VertexID >= uLimit) {
+    gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+    gl_PointSize = 0.0;
+    vKind = 0.0;
+    vNear = 0.0;
+    return;
+  }
+  float depth = clamp(a.y, 0.0, 1.12);
+  float persp = depth * depth;
+  float aspect = uRes.x / max(uRes.y, 1.0);
+  float spread = mix(0.14, 1.72, persp);
+  float x = a.x * spread / aspect;
+  float top = uKind == 3 ? 0.18 : 0.94;
+  float y = mix(top, -1.04, persp);
+  gl_Position = vec4(x, y, 0.0, 1.0);
+  float ps = mix(1.0, 5.6, persp) * (0.55 + a.z * 0.34) * (uRes.y / 720.0);
+  if (uKind == 2) ps *= 0.78;
+  if (uKind == 3) ps *= 0.64;
+  if (uKind == 4) ps *= 0.62;
+  if (uKind == 7) ps *= 0.82;
+  gl_PointSize = max(1.0, ps);
+  vKind = a.w;
+  vNear = persp;
+}
+`;
+
+const FRAG_PT = `#version 300 es
+precision highp float;
+precision highp int;
+uniform vec3 uAccent;
+uniform int uKind;
+in float vKind;
+in float vNear;
+out vec4 frag;
+void main(){
+  vec2 pc = gl_PointCoord * 2.0 - 1.0;
+  float d = dot(pc, pc);
+  if (uKind == 4) {
+    if (abs(pc.x) > 0.2 || abs(pc.y) > 1.0) discard;
+    frag = vec4(0.78, 0.86, 0.92, 0.42);
+    return;
+  }
+  if (d > 1.0) discard;
+  vec3 c = uAccent;
+  if (uKind == 2) c = vec3(0.94, 0.98, 1.0);
+  if (uKind == 3) c = vec3(0.82, 0.55, 0.24);
+  if (uKind == 6) c = vec3(0.85, 0.93, 1.0);
+  if (uKind == 7) c = mix(uAccent, vec3(1.0, 0.82, 0.90), 0.45);
+  float alpha = mix(0.12, 0.74, vNear) * (1.0 - d);
+  frag = vec4(c, alpha);
+}
 `;
 
 const FRAG_FS = `#version 300 es
@@ -187,17 +251,36 @@ function hexToRgb(hex: string): [number, number, number] {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
+const PARTICLE_LIMITS: Record<number, number> = {
+  0: 180,
+  1: 220,
+  2: 640,
+  3: 300,
+  4: 220,
+  5: 180,
+  6: 180,
+  7: 300,
+  8: 0,
+};
+
 export class GlRoad {
   private gl: WebGL2RenderingContext;
   private fs: WebGLProgram;
+  private pt: WebGLProgram;
+  private vao: WebGLVertexArrayObject;
+  private buf: WebGLBuffer;
+  private wasm: WasmCore | null = null;
   private last = performance.now();
   private scroll = 0;
   fps = 0;
   private frames = 0;
   private fpsT = 0;
   private uFs: Record<string, WebGLUniformLocation | null>;
+  private uPt: Record<string, WebGLUniformLocation | null>;
   private skies = new Map<string, WebGLTexture>();
   private skyReady = new Set<string>();
+  private skyFailed = new Set<string>();
+  private skyLoads = new Map<string, Promise<void>>();
   private dummy: WebGLTexture;
   private base = "/";
 
@@ -212,6 +295,7 @@ export class GlRoad {
     if (!gl) throw new Error("webgl2");
     this.gl = gl;
     this.fs = program(gl, VERT_FS, FRAG_FS);
+    this.pt = program(gl, VERT_PT, FRAG_PT);
     this.uFs = {
       uRes: loc(gl, this.fs, "uRes"),
       uTime: loc(gl, this.fs, "uTime"),
@@ -227,6 +311,24 @@ export class GlRoad {
       uShake: loc(gl, this.fs, "uShake"),
       uBump: loc(gl, this.fs, "uBump"),
     };
+    this.uPt = {
+      uRes: loc(gl, this.pt, "uRes"),
+      uAccent: loc(gl, this.pt, "uAccent"),
+      uKind: loc(gl, this.pt, "uKind"),
+      uLimit: loc(gl, this.pt, "uLimit"),
+    };
+    const vao = gl.createVertexArray();
+    const buf = gl.createBuffer();
+    if (!vao || !buf) throw new Error("vao");
+    this.vao = vao;
+    this.buf = buf;
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, 2048 * 16, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0);
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(0, 0, 0, 0);
@@ -240,34 +342,58 @@ export class GlRoad {
   }
 
   setBase(base: string) {
-    this.base = base.replace(/\/?$/, "/");
+    this.base = assetRoot(base);
   }
 
   ensureSky(kind: string) {
-    if (this.skyReady.has(kind) || this.skies.has(kind)) return;
+    void this.loadSky(kind);
+  }
+
+  private loadSky(kind: string): Promise<void> {
+    if (this.skyReady.has(kind) || this.skyFailed.has(kind)) return Promise.resolve();
+    const existing = this.skyLoads.get(kind);
+    if (existing) return existing;
+
     const gl = this.gl;
     const tex = gl.createTexture();
-    if (!tex) return;
+    if (!tex) {
+      this.skyFailed.add(kind);
+      return Promise.resolve();
+    }
     this.skies.set(kind, tex);
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([20, 20, 24, 255]));
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => {
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      this.skyReady.add(kind);
-    };
-    img.src = `${this.base}skies/${kind}.jpg`;
+
+    const loading = loadImageAsset(`${this.base}skies/${kind}.jpg`)
+      .then((img) => {
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        this.skyReady.add(kind);
+      })
+      .catch(() => {
+        this.skyFailed.add(kind);
+      });
+    this.skyLoads.set(kind, loading);
+    return loading;
   }
 
-  async attachWasm(_base: string) {
-    return;
+  async prepareSkies(kinds: string[]) {
+    await Promise.all(kinds.map((kind) => this.loadSky(kind)));
+  }
+
+  async attachWasm(base: string): Promise<WasmCore | null> {
+    this.setBase(base);
+    this.wasm = await loadWasm(this.base);
+    return this.wasm;
+  }
+
+  get hasWasmParticles() {
+    return Boolean(this.wasm ?? getWasm());
   }
 
   resize(cssW: number, cssH: number, dpr: number) {
@@ -292,6 +418,8 @@ export class GlRoad {
     }
 
     const kind = KIND_INDEX[scene.kind] ?? 0;
+  const wasm = this.wasm ?? getWasm();
+  if (wasm) wasm.vd_tick(dt, speedMps, kind, now / 1000);
 
     const accent = hexToRgb(scene.accent);
     const sky0 = hexToRgb(scene.sky[0]);
@@ -322,5 +450,22 @@ export class GlRoad {
     gl.uniform1f(this.uFs.uShake, shake);
     gl.uniform1f(this.uFs.uBump, bump);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    const particleLimit = PARTICLE_LIMITS[kind] ?? 160;
+    if (wasm && particleLimit > 0) {
+      const data = wasm.particles();
+      const count = Math.min(data.length / 4, particleLimit);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(this.pt);
+      gl.uniform2f(this.uPt.uRes, res[0], res[1]);
+      gl.uniform3f(this.uPt.uAccent, accent[0], accent[1], accent[2]);
+      gl.uniform1i(this.uPt.uKind, kind);
+      gl.uniform1i(this.uPt.uLimit, count);
+      gl.bindVertexArray(this.vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, data.subarray(0, count * 4));
+      gl.drawArrays(gl.POINTS, 0, count);
+      gl.bindVertexArray(null);
+    }
   }
 }

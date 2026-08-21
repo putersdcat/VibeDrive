@@ -1,10 +1,10 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SCENES, sceneById } from "../scenes";
 import { driveEngine } from "../engine";
 import { applyCarBrowserDefaults, startGpsWatch } from "../gps";
-import { cabinHype } from "../callouts";
-import { loadTributeSprites } from "../canvas/tribute";
+import { loadDriveRuntime } from "../loader";
 import { useDrive } from "../store";
+import { BrandMark } from "./BrandMark";
 import { HeaderBar } from "./HeaderBar";
 import { Hud } from "./Hud";
 import { SceneCanvas } from "./SceneCanvas";
@@ -90,16 +90,55 @@ function useKeys() {
   }, []);
 }
 
+type BootStatus = {
+  progress: number;
+  detail: string;
+  ready: boolean;
+};
+
+function BootScreen({ status }: { status: BootStatus }) {
+  const percent = Math.round(status.progress * 100);
+  return (
+    <main className="vd-boot" aria-label="Loading VibeDrive" aria-live="polite">
+      <div className="vd-boot-orbit vd-boot-orbit-a" aria-hidden />
+      <div className="vd-boot-orbit vd-boot-orbit-b" aria-hidden />
+      <div className="vd-boot-card">
+        <BrandMark large />
+        <div className="vd-wordmark">VibeDrive</div>
+        <p className="vd-boot-kicker">CINEMATIC DRIVE SYSTEM</p>
+        <div
+          className="vd-loader"
+          role="progressbar"
+          aria-label="Loading driving systems"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <span className="vd-loader-fill" style={{ width: `${percent}%` }} />
+        </div>
+        <div className="vd-boot-status">
+          <span>{status.detail}</span>
+          <span>{percent}%</span>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function DriveApp({ account }: { account?: ReactNode }) {
   const booted = useDrive((s) => s.booted);
   const started = useDrive((s) => s.started);
-  const carBrowser = useDrive((s) => s.carBrowser);
   const sceneId = useDrive((s) => s.sceneId);
   const wheelRight = useDrive((s) => s.wheelRight);
   const muted = useDrive((s) => s.muted);
   const engineVolume = useDrive((s) => s.engineVolume);
   const setBooted = useDrive((s) => s.setBooted);
   const startSession = useDrive((s) => s.startSession);
+  const [bootStatus, setBootStatus] = useState<BootStatus>({
+    progress: 0,
+    detail: "Restoring cabin settings…",
+    ready: false,
+  });
   const scene = sceneById(sceneId);
   useTheme();
   useDriveLoop();
@@ -108,17 +147,48 @@ export function DriveApp({ account }: { account?: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    const finish = () => {
+    const run = async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const update = (progress: number, detail: string, ready = false) => {
+        if (!cancelled) setBootStatus({ progress, detail, ready });
+      };
+
+      update(0.02, "Restoring cabin settings…");
+      try {
+        await Promise.resolve(useDrive.persist.rehydrate());
+      } catch (err) {
+        console.warn("VibeDrive settings restore skipped", err);
+      }
       if (cancelled) return;
-      window.setTimeout(() => {
-        if (!cancelled) setBooted(true);
-      }, 900);
+
+      setBooted(true);
+      update(0.04, "Warming the Rust driving core…");
+      try {
+        await loadDriveRuntime(base, (status) => {
+          if (!cancelled) setBootStatus({ ...status, ready: false });
+        });
+      } catch (err) {
+        console.error("VibeDrive runtime preload failed", err);
+        update(0.96, "Starting with local fallbacks…");
+      }
+      if (cancelled) return;
+
+      update(1, "Cabin ready", true);
+      try {
+        applyCarBrowserDefaults();
+        driveEngine.unlock();
+        driveEngine.start();
+        driveEngine.setVolume(useDrive.getState().engineVolume);
+      } catch (err) {
+        console.warn("VibeDrive audio is waiting for browser permission", err);
+      }
+      if (!useDrive.getState().started) startSession();
     };
-    void Promise.resolve(useDrive.persist.rehydrate()).then(finish, finish);
+    void run();
     return () => {
       cancelled = true;
     };
-  }, [setBooted]);
+  }, [setBooted, startSession]);
 
   useEffect(() => {
     driveEngine.setMuted(muted);
@@ -133,40 +203,13 @@ export function DriveApp({ account }: { account?: ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  const ignite = () => {
-    applyCarBrowserDefaults();
-    startGpsWatch();
-    driveEngine.unlock();
-    driveEngine.start();
-    driveEngine.setVolume(useDrive.getState().engineVolume);
-    const base = import.meta.env.BASE_URL || "/";
-    cabinHype.attach(base);
-    cabinHype.prime();
-    loadTributeSprites(base);
-    startSession();
-  };
-
   return (
     <div
       className={wheelRight ? "vd-shell is-right" : "vd-shell"}
       style={{ "--accent": scene.accent } as React.CSSProperties}
     >
-      {!booted ? (
-        <div className="vd-boot">
-          <span className="vd-logo vd-logo-lg" />
-          <span className="vd-wordmark">VibeDrive</span>
-        </div>
-      ) : !started ? (
-        <button type="button" className="vd-intro" onClick={ignite}>
-          <span className="vd-logo vd-logo-lg" />
-          <span className="vd-wordmark">VibeDrive</span>
-          <span className="vd-intro-copy">Tap to ignite the cabin</span>
-          <span className="vd-intro-hint">
-            {carBrowser
-              ? "This car's GPS drives the cabin"
-              : "Tap to ignite — GPS in the Tesla browser, pedals on a desk"}
-          </span>
-        </button>
+      {!booted || !bootStatus.ready || !started ? (
+        <BootScreen status={bootStatus} />
       ) : (
         <>
           <HeaderBar account={account} />
